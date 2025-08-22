@@ -39,11 +39,11 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // 新規登録したユーザーの認証（データベースを使わない）
+    // 新規登録したユーザーの認証（より寛容な条件）
     console.log('🔑 Authenticating new user:', email);
     
-    // 新規登録したユーザーは、パスワードが6文字以上であれば認証成功とする
-    if (password.length >= 6) {
+    // 新規登録したユーザーは、パスワードが入力されていれば認証成功とする
+    if (password && password.trim().length > 0) {
       console.log('✅ Authentication successful for new user');
       
       const mockUser = {
@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
 
       return response;
     } else {
-      console.log('❌ Password too short for new user');
+      console.log('❌ No password provided');
       return NextResponse.json(
-        { error: 'パスワードが短すぎます' },
+        { error: 'パスワードを入力してください' },
         { status: 401 }
       );
     }

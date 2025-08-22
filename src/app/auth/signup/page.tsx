@@ -79,9 +79,8 @@ export default function SignUpPage() {
             console.log('✅ Auto-login successful');
             // ログイン成功、ダッシュボードにリダイレクト
             setSuccess('ログインに成功しました！ダッシュボードに移動します...');
-            setTimeout(() => {
-              router.push('/dashboard');
-            }, 1000);
+            // 即座にリダイレクト（タイムアウトなし）
+            router.push('/dashboard');
           } else {
             console.log('❌ Auto-login failed');
             const loginErrorData = await loginResponse.json();

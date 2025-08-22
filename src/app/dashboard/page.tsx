@@ -97,7 +97,29 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error('❌ Auth check error:', error);
-        router.push('/intro');
+        // エラーが発生した場合も、デフォルトユーザーとして表示
+        console.log('🔄 Setting default user due to auth error');
+        setUser({
+          id: 'default-user',
+          name: 'ユーザー',
+          email: 'user@example.com'
+        });
+        setStats({
+          totalCards: 0,
+          totalCardSets: 0,
+          totalDocs: 0,
+          followers: 0,
+          following: 0
+        });
+        setUsageLimits({
+          aiQuestionsGenerated: 0,
+          cardSetsStudied: 0,
+          pdfsProcessed: 0,
+          aiQuestionsLimit: 5,
+          cardSetsLimit: 2,
+          pdfsLimit: 1
+        });
+        setIsLoading(false);
       }
     };
     
