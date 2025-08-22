@@ -21,9 +21,10 @@ export async function POST(request: NextRequest) {
     const { name, email, password, university, grade, major } = signUpSchema.parse(body);
     console.log('✅ Data validation passed');
 
-    // Prismaクライアントを動的インポート
-    const { prisma } = await import('@/lib/prisma');
-    console.log('🔌 Prisma client imported successfully');
+    // Prismaクライアントを直接インポート
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    console.log('🔌 Prisma client created successfully');
 
     // メールアドレスの重複チェック
     console.log('🔍 Checking for existing user with email:', email);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       console.log('❌ User already exists with email:', email);
+      await prisma.$disconnect();
       return NextResponse.json(
         { error: 'このメールアドレスは既に使用されています' },
         { status: 409 }
@@ -62,6 +64,8 @@ export async function POST(request: NextRequest) {
     // パスワードを除いたユーザー情報を返す
     const { password: _, ...userWithoutPassword } = user;
 
+    await prisma.$disconnect();
+    
     return NextResponse.json({
       success: true,
       message: 'アカウントが正常に作成されました',
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'アカウントの作成に失敗しました' },
+      { error: `アカウントの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}` },
       { status: 500 }
     );
   }

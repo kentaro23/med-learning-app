@@ -42,7 +42,8 @@ export default function SignUpPage() {
     setSuccess('');
 
     try {
-      const response = await fetch('/api/auth/signup', {
+      // 一時的にテスト用APIを使用
+      const response = await fetch('/api/auth/test-signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +101,11 @@ export default function SignUpPage() {
       } else {
         const errorData = await response.json();
         console.error('Signup failed:', errorData);
-        setError(errorData.error || 'アカウントの作成に失敗しました');
+        const errorMessage = errorData.error || 'アカウントの作成に失敗しました';
+        if (errorData.details) {
+          console.error('Validation details:', errorData.details);
+        }
+        setError(errorMessage);
       }
     } catch (err) {
       setError('アカウントの作成に失敗しました');
