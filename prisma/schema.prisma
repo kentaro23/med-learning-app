@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  password  String?  // NextAuth Credentials用
+  image     String?
+  createdAt DateTime @default(now())
+  
+  // プロフィール情報
+  university String? // 大学名
+  grade      String? // 学年
+  major      String? // 専攻
+  
+  // サブスクリプション情報
+  subscriptionType String @default("free") // "free" | "premium"
+  subscriptionExpiresAt DateTime?
+  
+  // 使用制限の追跡
+  dailyUsage DailyUsage?
+  
+  cardSets  CardSet[]
+  sessions  StudySession[]
+  likes     Like[]
+  bookmarks Bookmark[]
+  docs      Doc[]
+}
+
+// 日次使用制限の追跡
+model DailyUsage {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  date      DateTime @default(now())
+  
+  // 使用回数
+  aiQuestionsGenerated Int @default(0)  // AI問題生成回数
+  cardSetsStudied      Int @default(0)  // 単語帳演習回数
+  pdfsProcessed        Int @default(0)  // PDF処理回数
+  
+  // 制限値
+  aiQuestionsLimit     Int @default(5)  // 無料: 5回, プレミアム: 無制限
+  cardSetsLimit        Int @default(2)  // 無料: 2回, プレミアム: 無制限
+  pdfsLimit            Int @default(1)  // 無料: 1回, プレミアム: 無制限
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CardSet {
+  id          String    @id @default(cuid())
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id])
+  title       String
+  description String?
+  visibility  String    @default("private") // private | unlisted | public
+  tags        String    @default("") // SQLiteでは配列をサポートしないため、カンマ区切り文字列
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cards       Card[]
+  sessions    StudySession[]
+  likes       Like[]
+  bookmarks   Bookmark[]
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  cardSetId String
+  cardSet   CardSet  @relation(fields: [cardSetId], references: [id])
+  question  String
+  answer    String
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  logs      AnswerLog[]
+
+  @@index([cardSetId])
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  cardSetId String
+  cardSet   CardSet  @relation(fields: [cardSetId], references: [id])
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  logs      AnswerLog[]
+}
+
+model AnswerLog {
+  id        String       @id @default(cuid())
+  sessionId String
+  session   StudySession @relation(fields: [sessionId], references: [id])
+  cardId    String
+  card      Card         @relation(fields: [cardId], references: [id])
+  isCorrect Boolean
+  answeredAt DateTime    @default(now())
+}
+
+model Like {
+  id        String  @id @default(cuid())
+  userId    String
+  cardSetId String
+  user      User    @relation(fields: [userId], references: [id])
+  cardSet   CardSet @relation(fields: [cardSetId], references: [id])
+  @@unique([userId, cardSetId])
+}
+
+model Bookmark {
+  id        String  @id @default(cuid())
+  userId    String
+  cardSetId String
+  user      User    @relation(fields: [userId], references: [id])
+  cardSet   CardSet @relation(fields: [cardSetId], references: [id])
+  @@unique([userId, cardSetId])
+}
+
+/// PDF資料本体と穴埋め（Cloze）情報
+model Doc {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  title       String
+  visibility  String   @default("private") // private | unlisted | public
+  sourceName  String?  // アップロード元ファイル名
+  textHash    String   // 抽出テキストのハッシュ（改ざん検出用）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  clozes     Cloze[]
+}
+
+model Cloze {
+  id        String  @id @default(cuid())
+  docId     String
+  doc       Doc     @relation(fields: [docId], references: [id])
+  /// 原文の一部を[[blank]]で囲んだテキスト（マークダウン風）
+  content   String
+  /// AI自動提案のブランク数などのメタ
+  meta      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
