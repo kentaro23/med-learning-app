@@ -78,24 +78,27 @@ export default function SignUpPage() {
           if (loginResponse.ok) {
             console.log('✅ Auto-login successful');
             // ログイン成功、ダッシュボードにリダイレクト
+            setSuccess('ログインに成功しました！ダッシュボードに移動します...');
             setTimeout(() => {
               router.push('/dashboard');
-            }, 1500);
+            }, 1000);
           } else {
             console.log('❌ Auto-login failed');
             const loginErrorData = await loginResponse.json();
             console.error('Login error details:', loginErrorData);
             // ログイン失敗、サインインページにリダイレクト
+            setSuccess('アカウントは作成されましたが、自動ログインに失敗しました。手動でログインしてください。');
             setTimeout(() => {
               router.push('/auth/signin');
-            }, 2000);
+            }, 3000);
           }
         } catch (loginError) {
           console.error('Auto-login failed:', loginError);
           // ログイン失敗、サインインページにリダイレクト
+          setSuccess('アカウントは作成されましたが、自動ログインに失敗しました。手動でログインしてください。');
           setTimeout(() => {
             router.push('/auth/signin');
-          }, 2000);
+          }, 3000);
         }
       } else {
         const errorData = await response.json();
