@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -7,12 +6,18 @@ const signUpSchema = z.object({
   name: z.string().min(2).max(50),
   email: z.string().email(),
   password: z.string().min(6).max(100),
+  university: z.string().min(1),
+  grade: z.string().min(1),
+  major: z.string().min(1),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, password } = signUpSchema.parse(body);
+    const { name, email, password, university, grade, major } = signUpSchema.parse(body);
+
+    // Prismaクライアントを動的インポート
+    const { prisma } = await import('@/lib/prisma');
 
     // メールアドレスの重複チェック
     const existingUser = await prisma.user.findUnique({
@@ -34,18 +39,20 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
-        // 実際の実装では hashedPassword を保存
-        // password: hashedPassword,
+        password: hashedPassword, // パスワードを保存
+        university,
+        grade,
+        major,
       },
     });
 
+    // パスワードを除いたユーザー情報を返す
+    const { password: _, ...userWithoutPassword } = user;
+
     return NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
+      message: 'アカウントが正常に作成されました',
+      user: userWithoutPassword,
     });
 
   } catch (error) {
@@ -53,7 +60,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: '無効なリクエストデータです' },
+        { error: '無効なリクエストデータです', details: error.errors },
         { status: 400 }
       );
     }

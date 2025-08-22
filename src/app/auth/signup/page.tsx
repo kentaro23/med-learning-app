@@ -12,6 +12,9 @@ const signUpSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
   password: z.string().min(6, 'パスワードは6文字以上で入力してください').max(100, 'パスワードは100文字以下で入力してください'),
   confirmPassword: z.string(),
+  university: z.string().min(1, '大学名を入力してください'),
+  grade: z.string().min(1, '学年を選択してください'),
+  major: z.string().min(1, '専攻を入力してください'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "パスワードが一致しません",
   path: ["confirmPassword"],
@@ -48,14 +51,47 @@ export default function SignUpPage() {
           name: data.name,
           email: data.email,
           password: data.password,
+          university: data.university,
+          grade: data.grade,
+          major: data.major,
         }),
       });
 
       if (response.ok) {
-        setSuccess('アカウントが作成されました！ログインしてください。');
-        setTimeout(() => {
-          router.push('/auth/signin');
-        }, 2000);
+        const result = await response.json();
+        setSuccess('アカウントが作成されました！自動的にログインします...');
+        
+        // 新規登録成功後、自動的にログイン
+        try {
+          const loginResponse = await fetch('/api/auth/signin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: data.email,
+              password: data.password,
+            }),
+          });
+
+          if (loginResponse.ok) {
+            // ログイン成功、ダッシュボードにリダイレクト
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 1500);
+          } else {
+            // ログイン失敗、サインインページにリダイレクト
+            setTimeout(() => {
+              router.push('/auth/signin');
+            }, 2000);
+          }
+        } catch (loginError) {
+          console.error('Auto-login failed:', loginError);
+          // ログイン失敗、サインインページにリダイレクト
+          setTimeout(() => {
+            router.push('/auth/signin');
+          }, 2000);
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'アカウントの作成に失敗しました');
@@ -151,6 +187,65 @@ export default function SignUpPage() {
               />
               {errors.confirmPassword && (
                 <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            {/* 大学名 */}
+            <div>
+              <label htmlFor="university" className="block text-sm font-medium text-gray-700 mb-2">
+                大学名 *
+              </label>
+              <input
+                id="university"
+                type="text"
+                {...register('university')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="例：東京医科大学"
+              />
+              {errors.university && (
+                <p className="text-red-600 text-sm mt-1">{errors.university.message}</p>
+              )}
+            </div>
+
+            {/* 学年 */}
+            <div>
+              <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
+                学年 *
+              </label>
+              <select
+                id="grade"
+                {...register('grade')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="">学年を選択してください</option>
+                <option value="1年生">1年生</option>
+                <option value="2年生">2年生</option>
+                <option value="3年生">3年生</option>
+                <option value="4年生">4年生</option>
+                <option value="5年生">5年生</option>
+                <option value="6年生">6年生</option>
+                <option value="大学院生">大学院生</option>
+                <option value="その他">その他</option>
+              </select>
+              {errors.grade && (
+                <p className="text-red-600 text-sm mt-1">{errors.grade.message}</p>
+              )}
+            </div>
+
+            {/* 専攻 */}
+            <div>
+              <label htmlFor="major" className="block text-sm font-medium text-gray-700 mb-2">
+                専攻 *
+              </label>
+              <input
+                id="major"
+                type="text"
+                {...register('major')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="例：医学部"
+              />
+              {errors.major && (
+                <p className="text-red-600 text-sm mt-1">{errors.major.message}</p>
               )}
             </div>
 

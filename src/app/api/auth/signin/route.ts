@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -14,6 +13,9 @@ export async function POST(request: NextRequest) {
     const { email, password } = signInSchema.parse(body);
 
     console.log('🔐 Login attempt:', { email, passwordLength: password.length });
+
+    // Prismaクライアントを動的インポート
+    const { prisma } = await import('@/lib/prisma');
 
     // ユーザーの存在確認
     const user = await prisma.user.findUnique({
