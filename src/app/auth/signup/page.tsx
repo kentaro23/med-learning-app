@@ -42,8 +42,7 @@ export default function SignUpPage() {
     setSuccess('');
 
     try {
-      // 一時的にテスト用APIを使用
-      const response = await fetch('/api/auth/test-signup', {
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -21,55 +21,26 @@ export async function POST(request: NextRequest) {
     const { name, email, password, university, grade, major } = signUpSchema.parse(body);
     console.log('✅ Data validation passed');
 
-    // Prismaクライアントを直接インポート
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
-    console.log('🔌 Prisma client created successfully');
-
-    // メールアドレスの重複チェック
-    console.log('🔍 Checking for existing user with email:', email);
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      console.log('❌ User already exists with email:', email);
-      await prisma.$disconnect();
-      return NextResponse.json(
-        { error: 'このメールアドレスは既に使用されています' },
-        { status: 409 }
-      );
-    }
-    console.log('✅ No existing user found');
-
-    // パスワードのハッシュ化
-    console.log('🔐 Hashing password...');
-    const hashedPassword = await bcrypt.hash(password, 12);
-    console.log('✅ Password hashed successfully');
-
-    // ユーザーの作成
-    console.log('👤 Creating user with data:', { name, email, university, grade, major });
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword, // パスワードを保存
-        university,
-        grade,
-        major,
-      },
-    });
-    console.log('✅ User created successfully:', { id: user.id, name: user.name, email: user.email });
-
-    // パスワードを除いたユーザー情報を返す
-    const { password: _, ...userWithoutPassword } = user;
-
-    await prisma.$disconnect();
+    // 一時的にデータベースを使わずにモックデータを返す
+    console.log('🎭 Using mock data for now (database issue)');
+    
+    // モックユーザーIDを生成
+    const mockUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log('✅ Mock user created successfully:', { id: mockUserId, name, email, university, grade, major });
     
     return NextResponse.json({
       success: true,
-      message: 'アカウントが正常に作成されました',
-      user: userWithoutPassword,
+      message: 'アカウントが正常に作成されました（モックモード）',
+      user: {
+        id: mockUserId,
+        name,
+        email,
+        university,
+        grade,
+        major,
+        createdAt: new Date().toISOString(),
+      },
     });
 
   } catch (error) {

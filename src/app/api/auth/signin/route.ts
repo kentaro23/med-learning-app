@@ -41,18 +41,17 @@ export async function POST(request: NextRequest) {
     // パスワード検証
     let isValidPassword = false;
     
-    if (user.password) {
+    // デモ用アカウントのチェック（データベースエラーを回避）
+    if (email === 'demo@med.ai' && password === 'password') {
+      console.log('🔑 Demo account credentials match');
+      isValidPassword = true;
+    } else if (user.password) {
       // データベースにパスワードが保存されている場合
       console.log('🔑 Comparing with stored password hash');
       isValidPassword = await bcrypt.compare(password, user.password);
       console.log('🔑 Password comparison result:', isValidPassword);
     } else {
-      // デモ用アカウント（demo@med.ai）の場合
-      console.log('🔑 No stored password, checking demo account');
-      if (email === 'demo@med.ai' && password === 'password') {
-        isValidPassword = true;
-        console.log('🔑 Demo account password match');
-      }
+      console.log('🔑 No stored password and not demo account');
     }
 
     if (!isValidPassword) {
