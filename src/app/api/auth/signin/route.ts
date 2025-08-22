@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       isValidPassword = await bcrypt.compare(password, user.password);
       console.log('🔑 Password comparison result:', isValidPassword);
     } else {
-      // デモ用アカウント（demo@example.com）の場合
+      // デモ用アカウント（demo@med.ai）の場合
       console.log('🔑 No stored password, checking demo account');
-      if (email === 'demo@example.com' && password === 'password') {
+      if (email === 'demo@med.ai' && password === 'password') {
         isValidPassword = true;
         console.log('🔑 Demo account password match');
       }

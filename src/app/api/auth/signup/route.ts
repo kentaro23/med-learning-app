@@ -13,28 +13,40 @@ const signUpSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📝 Sign up request received');
+    
     const body = await request.json();
+    console.log('📋 Request body:', { ...body, password: '[HIDDEN]' });
+    
     const { name, email, password, university, grade, major } = signUpSchema.parse(body);
+    console.log('✅ Data validation passed');
 
     // Prismaクライアントを動的インポート
     const { prisma } = await import('@/lib/prisma');
+    console.log('🔌 Prisma client imported successfully');
 
     // メールアドレスの重複チェック
+    console.log('🔍 Checking for existing user with email:', email);
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
+      console.log('❌ User already exists with email:', email);
       return NextResponse.json(
         { error: 'このメールアドレスは既に使用されています' },
         { status: 409 }
       );
     }
+    console.log('✅ No existing user found');
 
     // パスワードのハッシュ化
+    console.log('🔐 Hashing password...');
     const hashedPassword = await bcrypt.hash(password, 12);
+    console.log('✅ Password hashed successfully');
 
     // ユーザーの作成
+    console.log('👤 Creating user with data:', { name, email, university, grade, major });
     const user = await prisma.user.create({
       data: {
         name,
@@ -45,6 +57,7 @@ export async function POST(request: NextRequest) {
         major,
       },
     });
+    console.log('✅ User created successfully:', { id: user.id, name: user.name, email: user.email });
 
     // パスワードを除いたユーザー情報を返す
     const { password: _, ...userWithoutPassword } = user;

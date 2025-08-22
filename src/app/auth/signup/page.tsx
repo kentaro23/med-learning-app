@@ -63,6 +63,7 @@ export default function SignUpPage() {
         
         // 新規登録成功後、自動的にログイン
         try {
+          console.log('🔄 Attempting auto-login...');
           const loginResponse = await fetch('/api/auth/signin', {
             method: 'POST',
             headers: {
@@ -75,11 +76,15 @@ export default function SignUpPage() {
           });
 
           if (loginResponse.ok) {
+            console.log('✅ Auto-login successful');
             // ログイン成功、ダッシュボードにリダイレクト
             setTimeout(() => {
               router.push('/dashboard');
             }, 1500);
           } else {
+            console.log('❌ Auto-login failed');
+            const loginErrorData = await loginResponse.json();
+            console.error('Login error details:', loginErrorData);
             // ログイン失敗、サインインページにリダイレクト
             setTimeout(() => {
               router.push('/auth/signin');
@@ -94,6 +99,7 @@ export default function SignUpPage() {
         }
       } else {
         const errorData = await response.json();
+        console.error('Signup failed:', errorData);
         setError(errorData.error || 'アカウントの作成に失敗しました');
       }
     } catch (err) {
