@@ -19,7 +19,6 @@
     "next": "15.5.0",
     "next-auth": "^4.24.11",
     "openai": "^5.13.1",
-    "pdf-parse": "^1.1.1",
     "prisma": "^6.14.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -30,7 +29,6 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.11",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "eslint": "^9.33.0",
@@ -43,6 +41,10 @@
     "seed": "tsx prisma/seed.ts"
   },
   "pnpm": {
-    "allowedBuiltDependencies": ["@prisma/client", "prisma", "@prisma/engines"]
+    "allowedBuiltDependencies": [
+      "@prisma/client",
+      "prisma",
+      "@prisma/engines"
+    ]
   }
 }
