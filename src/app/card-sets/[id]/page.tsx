@@ -90,6 +90,27 @@ export default function CardSetDetailPage() {
     console.log('❤️ Like button clicked, current state:', { isLiked, likeCount });
     
     try {
+      // 即座にUIを更新（楽観的更新）
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      
+      if (newLikedState) {
+        // いいねを追加
+        setLikeCount(prev => {
+          const newCount = prev + 1;
+          console.log('👍 Like added, count updated:', prev, '→', newCount);
+          return newCount;
+        });
+      } else {
+        // いいねを取り消し
+        setLikeCount(prev => {
+          const newCount = Math.max(0, prev - 1);
+          console.log('👎 Like removed, count updated:', prev, '→', newCount);
+          return newCount;
+        });
+      }
+      
+      // API呼び出し
       const response = await fetch(`/api/card-sets/${cardSet.id}/like`, {
         method: 'POST',
       });
@@ -98,30 +119,22 @@ export default function CardSetDetailPage() {
         const data = await response.json();
         console.log('✅ Like API response:', data);
         
-        // いいねの状態を更新
+        // APIの結果に基づいて状態を最終確定
         setIsLiked(data.liked);
-        
-        // いいね数を更新（現在の状態に基づいて計算）
-        if (data.liked) {
-          // いいねを追加
-          setLikeCount(prev => {
-            const newCount = prev + 1;
-            console.log('👍 Like added, count updated:', prev, '→', newCount);
-            return newCount;
-          });
-        } else {
-          // いいねを取り消し
-          setLikeCount(prev => {
-            const newCount = Math.max(0, prev - 1);
-            console.log('👎 Like removed, count updated:', prev, '→', newCount);
-            return newCount;
-          });
-        }
+        setLikeCount(data.liked ? likeCount + 1 : Math.max(0, likeCount - 1));
       } else {
         console.error('❌ Like API error:', response.status);
+        // APIエラー時は元の状態に戻す
+        setIsLiked(!newLikedState);
+        setLikeCount(newLikedState ? Math.max(0, likeCount - 1) : likeCount + 1);
+        alert('いいねの更新に失敗しました。もう一度お試しください。');
       }
     } catch (error) {
       console.error('❌ Error toggling like:', error);
+      // エラー時は元の状態に戻す
+      setIsLiked(!isLiked);
+      setLikeCount(isLiked ? likeCount + 1 : Math.max(0, likeCount - 1));
+      alert('いいねの更新に失敗しました。もう一度お試しください。');
     }
   };
 
@@ -141,10 +154,19 @@ export default function CardSetDetailPage() {
           setLikeCount(cardSetData.cardSet._count.likes);
           
           // いいねの状態を取得
-          const likeResponse = await fetch(`/api/card-sets/${cardSetId}/like`);
-          if (likeResponse.ok) {
-            const likeData = await likeResponse.json();
-            setIsLiked(likeData.liked);
+          try {
+            const likeResponse = await fetch(`/api/card-sets/${cardSetId}/like`);
+            if (likeResponse.ok) {
+              const likeData = await likeResponse.json();
+              console.log('✅ Like status fetched:', likeData);
+              setIsLiked(likeData.liked);
+            } else {
+              console.log('⚠️ Like status fetch failed, setting default');
+              setIsLiked(false);
+            }
+          } catch (error) {
+            console.log('⚠️ Like status fetch error, setting default');
+            setIsLiked(false);
           }
         } else {
           const errorData = await cardSetResponse.json();
@@ -445,11 +467,12 @@ export default function CardSetDetailPage() {
             <div className="flex items-center justify-center">
               <button
                 onClick={handleLikeClick}
+                disabled={!cardSet}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 ${
                   isLiked
                     ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                } ${!cardSet ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <svg 
                   className={`w-6 h-6 ${isLiked ? 'fill-current text-red-100' : 'stroke-current fill-none'}`}
@@ -468,6 +491,10 @@ export default function CardSetDetailPage() {
                 <span className={`text-sm font-bold ${isLiked ? 'text-red-100' : 'text-gray-600'}`}>
                   ({likeCount})
                 </span>
+                {/* デバッグ情報 */}
+                <span className="text-xs text-gray-400 ml-2">
+                  {isLiked ? 'ON' : 'OFF'}
+                </span>
               </button>
             </div>
             {isLiked && (
@@ -475,6 +502,27 @@ export default function CardSetDetailPage() {
                 <span className="text-sm text-red-600 font-medium">❤️ いいね済みです！</span>
               </div>
             )}
+            {/* デバッグ用ボタン */}
+            <div className="text-center mt-2 space-x-2">
+              <button
+                onClick={() => {
+                  console.log('🔍 Debug: Current state:', { isLiked, likeCount, cardSet: !!cardSet });
+                  alert(`現在の状態:\nいいね: ${isLiked ? 'ON' : 'OFF'}\nいいね数: ${likeCount}\nカードセット: ${cardSet ? '読み込み済み' : '未読み込み'}`);
+                }}
+                className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+              >
+                状態確認
+              </button>
+              <button
+                onClick={() => {
+                  setIsLiked(!isLiked);
+                  console.log('🔄 Debug: Toggle like state to:', !isLiked);
+                }}
+                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+              >
+                状態切り替え
+              </button>
+            </div>
           </div>
         </div>
 
