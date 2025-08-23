@@ -61,12 +61,47 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log('🚀 Dashboard page mounted');
     
+    // フォールバックタイマーを設定（5秒後に強制的にローディングを終了）
+    const fallbackTimer = setTimeout(() => {
+      console.log('⏰ Fallback timer triggered, setting default user');
+      setUser({
+        id: 'fallback-user',
+        name: 'フォールバックユーザー',
+        email: 'fallback@example.com'
+      });
+      setStats({
+        totalCards: 0,
+        totalCardSets: 0,
+        totalDocs: 0,
+        followers: 0,
+        following: 0
+      });
+      setUsageLimits({
+        aiQuestionsGenerated: 0,
+        cardSetsStudied: 0,
+        pdfsProcessed: 0,
+        aiQuestionsLimit: 5,
+        cardSetsLimit: 2,
+        pdfsLimit: 1
+      });
+      setIsLoading(false);
+    }, 5000);
+    
     // APIエンドポイントを使用して認証状態を確認
     const checkAuth = async () => {
       console.log('🔍 Checking authentication via API...');
       
       try {
-        const response = await fetch('/api/auth/me');
+        // タイムアウト付きで認証確認
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒でタイムアウト
+        
+        const response = await fetch('/api/auth/me', {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        clearTimeout(fallbackTimer); // フォールバックタイマーをクリア
         const data = await response.json();
         
         if (response.ok && data.user) {
@@ -82,21 +117,58 @@ export default function DashboardPage() {
             following: 0
           });
 
-          // 使用制限情報を取得
-          const usageResponse = await fetch('/api/usage/summary');
-          if (usageResponse.ok) {
-            const usageData = await usageResponse.json();
-            setUsageLimits(usageData.usage);
+          // 使用制限情報を取得（タイムアウト付き）
+          try {
+            const usageResponse = await fetch('/api/usage/summary', {
+              signal: AbortSignal.timeout(3000) // 3秒でタイムアウト
+            });
+            if (usageResponse.ok) {
+              const usageData = await usageResponse.json();
+              setUsageLimits(usageData.usage);
+            }
+          } catch (usageError) {
+            console.log('⚠️ Usage data fetch failed, using default values');
+            // デフォルト値を使用
+            setUsageLimits({
+              aiQuestionsGenerated: 0,
+              cardSetsStudied: 0,
+              pdfsProcessed: 0,
+              aiQuestionsLimit: 5,
+              cardSetsLimit: 2,
+              pdfsLimit: 1
+            });
           }
           
           console.log('✅ User info and stats set, setting loading to false');
           setIsLoading(false);
         } else {
-          console.log('❌ User not authenticated, redirecting to intro');
-          router.push('/intro');
+          console.log('❌ User not authenticated, setting default user');
+          clearTimeout(fallbackTimer); // フォールバックタイマーをクリア
+          setUser({
+            id: 'default-user',
+            name: 'ゲストユーザー',
+            email: 'guest@example.com'
+          });
+          setStats({
+            totalCards: 0,
+            totalCardSets: 0,
+            totalDocs: 0,
+            followers: 0,
+            following: 0
+          });
+          setUsageLimits({
+            aiQuestionsGenerated: 0,
+            cardSetsStudied: 0,
+            pdfsProcessed: 0,
+            aiQuestionsLimit: 5,
+            cardSetsLimit: 2,
+            pdfsLimit: 1
+          });
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('❌ Auth check error:', error);
+        clearTimeout(fallbackTimer); // フォールバックタイマーをクリア
         // エラーが発生した場合も、デフォルトユーザーとして表示
         console.log('🔄 Setting default user due to auth error');
         setUser({
@@ -124,6 +196,11 @@ export default function DashboardPage() {
     };
     
     checkAuth();
+    
+    // クリーンアップ関数
+    return () => {
+      clearTimeout(fallbackTimer);
+    };
   }, [router]);
 
 
