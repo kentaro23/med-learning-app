@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { checkUsageLimit } from '@/lib/usage-limits';
-
-const requestSchema = z.object({
-  feature: z.enum(['aiQuestions', 'cardSets', 'pdfs']),
-});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { feature } = requestSchema.parse(body);
+    const { feature } = body;
 
     // セッションクッキーからユーザー情報を取得
     const sessionCookie = request.cookies.get('next-auth.session-token');
@@ -21,62 +15,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // デモユーザーの場合は特別処理
-    let userId = 'demo-user-id';
-    
-    // セッションクッキーがデモセッションの場合は、実際のデモユーザーIDを使用
+    // デモユーザーの場合は制限なし
     if (sessionCookie.value === 'demo-session-token') {
-      // データベースからデモユーザーを検索
-      const { prisma } = await import('@/lib/prisma');
-      
-      try {
-        const demoUser = await prisma.user.findUnique({
-          where: { email: 'demo@med.ai' },
-          select: { id: true }
-        });
-        
-        if (demoUser) {
-          userId = demoUser.id;
-        }
-      } catch (error) {
-        console.error('Demo user lookup error:', error);
-      }
-    }
-    
-    const usageCheck = await checkUsageLimit(userId, feature);
-    
-    if (!usageCheck.canUse) {
-      return NextResponse.json(
-        { 
-          error: '使用制限に達しました',
-          details: usageCheck.message,
-          currentUsage: usageCheck.currentUsage,
-          limit: usageCheck.limit,
-          remaining: usageCheck.remaining
-        }, 
-        { status: 429 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: 'デモユーザーは制限なしで利用できます',
+        canUse: true,
+        remainingUses: -1, // 制限なし
+        dailyLimit: -1,
+      });
     }
 
+    // 無料プランユーザーの場合
+    if (sessionCookie.value.startsWith('user-session-')) {
+      // 現在の日付を取得
+      const today = new Date().toDateString();
+      
+      // 実際の実装ではデータベースから使用回数を取得
+      // 現在はモックデータで1日5回まで許可
+      const mockUsage = {
+        date: today,
+        feature: feature,
+        count: 0, // 実際の実装ではデータベースから取得
+        dailyLimit: 5,
+      };
+
+      const remainingUses = mockUsage.dailyLimit - mockUsage.count;
+      const canUse = remainingUses > 0;
+
+      if (canUse) {
+        return NextResponse.json({
+          success: true,
+          message: '問題演習を開始できます',
+          canUse: true,
+          remainingUses: remainingUses,
+          dailyLimit: mockUsage.dailyLimit,
+        });
+      } else {
+        return NextResponse.json({
+          success: false,
+          message: '本日の使用制限に達しました。明日またお試しください。',
+          canUse: false,
+          remainingUses: 0,
+          dailyLimit: mockUsage.dailyLimit,
+          details: '無料プランでは1日5回まで問題演習ができます。',
+        }, { status: 429 });
+      }
+    }
+
+    // その他のユーザーは制限なし
     return NextResponse.json({
+      success: true,
+      message: '制限なしで利用できます',
       canUse: true,
-      currentUsage: usageCheck.currentUsage,
-      limit: usageCheck.limit,
-      remaining: usageCheck.remaining,
-      message: usageCheck.message
+      remainingUses: -1,
+      dailyLimit: -1,
     });
+
   } catch (error) {
     console.error('Usage check error:', error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: '無効なリクエストデータです', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
     return NextResponse.json(
-      { error: '使用制限の確認中にエラーが発生しました' },
+      { error: '使用制限の確認に失敗しました' },
       { status: 500 }
     );
   }

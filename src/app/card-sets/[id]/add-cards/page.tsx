@@ -61,8 +61,18 @@ export default function AddCardsPage() {
           setCardSet(cardSetData.cardSet);
           
           // 作成者チェック（実際の実装ではセッションからユーザーIDを取得）
-          // 一時的にデモユーザーとして扱う
-          setIsOwner(true);
+          // デモユーザーの場合は作成者として扱う
+          const sessionCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('next-auth.session-token='));
+          
+          if (sessionCookie && sessionCookie.includes('demo-session-token')) {
+            setIsOwner(true);
+          } else {
+            // 実際のユーザーIDと作成者IDを比較
+            // 現在はデモ用にtrueに設定
+            setIsOwner(true);
+          }
         } else {
           const errorData = await cardSetResponse.json();
           console.error('CardSet API Error:', errorData);

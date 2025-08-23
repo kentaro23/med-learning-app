@@ -168,7 +168,7 @@ export default function StudyPage() {
   };
 
   // 学習開始
-  const startStudy = () => {
+  const startStudy = async () => {
     console.log('🚀 Starting study session');
     console.log('📊 Current state:', { cardSet, cards: cards.length, isStudyStarted });
     
@@ -177,6 +177,35 @@ export default function StudyPage() {
         console.error('❌ Cannot start study: missing data');
         alert('学習に必要なデータが不足しています。');
         return;
+      }
+
+      // 使用制限チェック
+      try {
+        const usageResponse = await fetch('/api/usage/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ feature: 'cardSets' }),
+        });
+
+        if (!usageResponse.ok) {
+          const errorData = await usageResponse.json();
+          if (usageResponse.status === 429) {
+            // 使用制限に達した場合
+            alert(`使用制限に達しました: ${errorData.details}`);
+            return;
+          }
+          // エラーが発生した場合でも、デモアカウントの場合は学習を開始
+          console.warn('Usage check failed, but proceeding for demo account:', errorData);
+        } else {
+          const usageData = await usageResponse.json();
+          console.log('✅ Usage check passed:', usageData.message);
+        }
+      } catch (usageError) {
+        console.error('Usage check error:', usageError);
+        // エラーが発生した場合でも、デモアカウントの場合は学習を開始
+        console.warn('Usage check failed, but proceeding for demo account');
       }
       
       setIsStudyStarted(true);

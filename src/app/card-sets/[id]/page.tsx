@@ -99,8 +99,10 @@ export default function CardSetDetailPage() {
         // いいね数を更新
         if (data.liked) {
           setLikeCount(prev => prev + 1);
+          console.log('👍 Like added, new count:', likeCount + 1);
         } else {
           setLikeCount(prev => Math.max(0, prev - 1));
+          console.log('👎 Like removed, new count:', Math.max(0, likeCount - 1));
         }
       }
     } catch (error) {
