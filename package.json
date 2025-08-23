@@ -7,7 +7,8 @@
     "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -41,10 +42,13 @@
     "seed": "tsx prisma/seed.ts"
   },
   "pnpm": {
-    "allowedBuiltDependencies": [
+    "onlyBuiltDependencies": [
       "@prisma/client",
+      "@prisma/engines",
       "prisma",
-      "@prisma/engines"
+      "sharp",
+      "esbuild",
+      "@tailwindcss/oxide"
     ]
   }
 }

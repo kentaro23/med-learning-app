@@ -67,7 +67,7 @@ export default function CardSetsPage() {
           const data = await response.json();
           setCardSets(data.cardSets || []);
         } else {
-          console.error('Error fetching card sets:', error);
+          console.error('Error fetching card sets:', response.status);
           // エラーの場合はモックデータを使用
           setCardSets(mockCardSets);
         }
@@ -219,7 +219,7 @@ export default function CardSetsPage() {
                 </p>
                 
                 <div className="flex flex-wrap gap-1 mb-4">
-                  {cardSet.tags.split(',').map((tag, index) => (
+                  {cardSet.tags?.split(',').map((tag: string, index: number) => (
                     <span
                       key={index}
                       className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"

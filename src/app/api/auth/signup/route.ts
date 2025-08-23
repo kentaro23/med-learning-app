@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: '無効なリクエストデータです', details: error.errors },
+        { error: '無効なリクエストデータです', details: error },
         { status: 400 }
       );
     }

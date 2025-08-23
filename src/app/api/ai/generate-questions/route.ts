@@ -93,9 +93,9 @@ export async function POST(request: NextRequest) {
     console.error('Error generating questions:', error);
     
     if (error instanceof z.ZodError) {
-      console.error('🔴 Zod validation errors:', error.errors);
+      console.error('🔴 Zod validation errors:', error);
       return NextResponse.json(
-        { error: '無効なリクエストデータです', details: error.errors },
+        { error: '無効なリクエストデータです', details: error },
         { status: 400 }
       );
     }

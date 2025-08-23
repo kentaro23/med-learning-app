@@ -39,19 +39,19 @@ const mockCards: Card[] = [
     id: '1',
     question: '脳梗塞の初期症状として最も重要なのは？',
     answer: '片麻痺',
-    explanation: '脳梗塞では片側の運動麻痺が最も特徴的な初期症状です。'
+    source: '脳梗塞では片側の運動麻痺が最も特徴的な初期症状です。'
   },
   {
     id: '2',
     question: 'パーキンソン病の三大症状は？',
     answer: '振戦、筋固縮、無動',
-    explanation: 'パーキンソン病の主要症状として知られています。'
+    source: 'パーキンソン病の主要症状として知られています。'
   },
   {
     id: '3',
     question: '多発性硬化症の特徴的な所見は？',
     answer: '時間的多発性と空間的多発性',
-    explanation: '時間的・空間的に多発する脱髄病変が特徴です。'
+    source: '時間的・空間的に多発する脱髄病変が特徴です。'
   }
 ];
 
@@ -229,7 +229,7 @@ export default function CardSetDetailPage() {
       result: studyResults[card.id] || 'skip',
       question: card.question,
       answer: card.answer,
-      explanation: card.explanation
+              source: card.source
     }));
 
     // 学習時間を計算（秒）

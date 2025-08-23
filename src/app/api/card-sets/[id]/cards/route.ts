@@ -11,7 +11,7 @@ const addCardSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 一時的に認証をスキップ
@@ -20,12 +20,14 @@ export async function GET(
     //   return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     // }
 
+    const { id: cardSetId } = await params;
+
     try {
       const { prisma } = await import('@/lib/prisma');
       
       const cards = await prisma.card.findMany({
         where: {
-          cardSetId: params.id,
+          cardSetId: cardSetId,
         },
         orderBy: {
           createdAt: 'desc',
@@ -42,7 +44,7 @@ export async function GET(
           question: '脳梗塞の初期症状として最も重要なのは？',
           answer: '片麻痺',
           source: '脳梗塞では片側の運動麻痺が最も特徴的な初期症状です。',
-          cardSetId: params.id,
+          cardSetId: cardSetId,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -51,7 +53,7 @@ export async function GET(
           question: 'パーキンソン病の三大症状は？',
           answer: '振戦、筋固縮、無動',
           source: 'パーキンソン病の主要症状として知られています。',
-          cardSetId: params.id,
+          cardSetId: cardSetId,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -60,7 +62,7 @@ export async function GET(
           question: '多発性硬化症の特徴的な所見は？',
           answer: '時間的多発性と空間的多発性',
           source: '時間的・空間的に多発する脱髄病変が特徴です。',
-          cardSetId: params.id,
+          cardSetId: cardSetId,
           createdAt: new Date(),
           updatedAt: new Date(),
         }
@@ -79,7 +81,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 一時的に認証をスキップ
@@ -88,6 +90,7 @@ export async function POST(
     //   return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     // }
 
+    const { id: cardSetId } = await params;
     const body = await request.json();
     const validatedData = addCardSchema.parse(body);
 
@@ -96,7 +99,7 @@ export async function POST(
       
       // カードセットの存在確認
       const cardSet = await prisma.cardSet.findUnique({
-        where: { id: params.id },
+        where: { id: cardSetId },
         include: { owner: true },
       });
 
@@ -108,14 +111,14 @@ export async function POST(
       }
 
       // 新しいカードを作成
-      const newCard = await prisma.card.create({
-        data: {
-          question: validatedData.question,
-          answer: validatedData.answer,
-          source: validatedData.source,
-          cardSetId: params.id,
-        },
-      });
+              const newCard = await prisma.card.create({
+          data: {
+            question: validatedData.question,
+            answer: validatedData.answer,
+            source: validatedData.source,
+            cardSetId: cardSetId,
+          },
+        });
 
       return NextResponse.json({ 
         message: 'カードが正常に追加されました',
@@ -129,7 +132,7 @@ export async function POST(
         question: validatedData.question,
         answer: validatedData.answer,
         source: validatedData.source,
-        cardSetId: params.id,
+        cardSetId: cardSetId,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -142,7 +145,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: '無効なリクエストデータです', details: error.errors },
+        { error: '無効なリクエストデータです', details: error },
         { status: 400 }
       );
     }

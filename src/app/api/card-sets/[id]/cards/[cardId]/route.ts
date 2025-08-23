@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; cardId: string } }
+  { params }: { params: Promise<{ id: string; cardId: string }> }
 ) {
   try {
     // 一時的に認証をスキップ
@@ -13,11 +13,12 @@ export async function DELETE(
     //   return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     // }
 
+    const { id: cardSetId, cardId } = await params;
     const { prisma } = await import('@/lib/prisma');
     
     // カードの存在確認
     const card = await prisma.card.findUnique({
-      where: { id: params.cardId },
+      where: { id: cardId },
       include: { cardSet: { include: { owner: true } } },
     });
 
@@ -30,7 +31,7 @@ export async function DELETE(
 
     // カードを削除
     await prisma.card.delete({
-      where: { id: params.cardId },
+      where: { id: cardId },
     });
 
     return NextResponse.json({ 

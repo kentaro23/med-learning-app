@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 一時的に認証をスキップ
@@ -13,7 +13,7 @@ export async function GET(
     //   return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     // }
 
-    const cardSetId = params.id;
+    const { id: cardSetId } = await params;
 
     try {
       const { prisma } = await import('@/lib/prisma');

@@ -82,11 +82,13 @@ function dedupe(cards: z.infer<typeof CardSchema>[]) {
 /** ==== Main Handler ==== */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: cardSetId } = await params;
+    
     // レート制限チェック
-    const clientIP = request.ip || request.headers.get("x-forwarded-for") || "unknown";
+    const clientIP = request.headers.get("x-forwarded-for") || "unknown";
     if (!rateLimit(clientIP)) {
       return NextResponse.json(
         { ok: false, error: "レート制限を超過しました。1分後に再試行してください。" },
@@ -96,7 +98,7 @@ export async function POST(
 
     // カードセットの存在確認
     const cardSet = await prisma.cardSet.findUnique({
-      where: { id: params.id },
+      where: { id: cardSetId },
       include: { cards: true },
     });
 
@@ -168,7 +170,7 @@ export async function POST(
         question: card.question,
         answer: card.answer,
         source: card.source || validatedData.source,
-        cardSetId: params.id,
+        cardSetId: cardSetId,
       })),
     });
 
