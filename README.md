@@ -20,8 +20,8 @@
 
 ## 🛠️ 技術スタック
 
-- **フロントエンド**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- **データベース**: Prisma + SQLite（ローカル）
+- **フロントエンド**: Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- **データベース**: Prisma + PostgreSQL (Supabase)
 - **認証**: NextAuth.js（Email/Password）
 - **AI**: OpenAI API（GPT-4o-mini）
 - **PDF処理**: pdf-parse
@@ -50,15 +50,40 @@ pnpm install
 ### 3. 環境変数の設定
 `.env`ファイルを作成し、以下の内容を設定してください：
 
+#### ローカル開発用（SQLite）
 ```env
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4o-mini
 DATABASE_URL="file:./dev.db"
+DIRECT_URL="file:./dev.db"
+OPENAI_API_KEY=your_openai_api_key_here
 NEXTAUTH_SECRET=your_nextauth_secret_here
 NEXTAUTH_URL=http://localhost:3000
 ```
 
+#### 本番環境用（Supabase PostgreSQL）
+```env
+# Supabase Database URLs
+DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:5432/postgres"
+
+OPENAI_API_KEY=your_openai_api_key_here
+NEXTAUTH_SECRET=your_nextauth_secret_here
+NEXTAUTH_URL=https://your-app.vercel.app
+```
+
+#### Supabase接続文字列の取得方法
+1. [Supabase](https://supabase.com)でプロジェクトを作成
+2. Settings > Database に移動
+3. "Connection string" セクションで URI 形式をコピー
+4. `[YOUR-PASSWORD]` を実際のデータベースパスワードに置換
+5. `[YOUR-PROJECT-REF]` を実際のプロジェクト参照IDに置換
+
+**重要**: 
+- `DATABASE_URL`: ポート6543、pgbouncer=true（プール接続）
+- `DIRECT_URL`: ポート5432（直接接続、マイグレーション用）
+
 ### 4. データベースのセットアップ
+
+#### ローカル開発（SQLite）
 ```bash
 # データベースのマイグレーション
 npx prisma migrate dev
@@ -66,6 +91,17 @@ npx prisma migrate dev
 # データベースのシード（テストデータ投入）
 pnpm run db:seed
 ```
+
+#### 本番環境（Supabase PostgreSQL）
+```bash
+# マイグレーションの適用（本番環境）
+npx prisma migrate deploy
+
+# Prisma Clientの生成
+npx prisma generate
+```
+
+**注意**: 本番環境では `migrate deploy` を使用してください。`migrate dev` は開発環境専用です。
 
 ### 5. 開発サーバーの起動
 ```bash
@@ -147,19 +183,43 @@ med-memo-ai/
 
 ## 🚀 デプロイ
 
-### Vercel
+### Vercel デプロイ
+
+#### 1. 環境変数の設定
+Vercel ダッシュボードで以下の環境変数を設定してください：
+
+**Production & Preview 共通**
+```env
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:6543/postgres?pgbouncer=true&connection_limit=1
+DIRECT_URL=postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:5432/postgres
+OPENAI_API_KEY=your_openai_api_key_here
+NEXTAUTH_SECRET=your_secure_nextauth_secret_here
+NEXTAUTH_URL=https://your-app.vercel.app
+```
+
+#### 2. デプロイ
 ```bash
 # Vercel CLIのインストール
 npm i -g vercel
 
 # デプロイ
-vercel
+vercel --prod
+```
+
+#### 3. マイグレーション
+デプロイ時に `prisma migrate deploy` が自動実行されます（package.json の build スクリプトで設定済み）。
+
+### 手動マイグレーション（必要な場合）
+```bash
+# ローカルから本番DBにマイグレーション適用
+DATABASE_URL="your_production_database_url" npx prisma migrate deploy
 ```
 
 ### 本番環境の注意点
-- 環境変数の適切な設定
-- データベースの本番環境対応（PostgreSQL推奨）
+- Supabase PostgreSQL データベースの設定
+- 環境変数の適切な設定（pooled/non-pooled接続）
 - OpenAI API キーの管理
+- NEXTAUTH_SECRET の安全な生成
 
 ## 🤝 コントリビューション
 
