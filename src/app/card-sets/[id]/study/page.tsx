@@ -88,10 +88,18 @@ export default function StudyPage() {
               console.log('✅ Cards data fetched successfully:', cardsData);
               if (cardsData.cards && cardsData.cards.length > 0) {
                 setCards(cardsData.cards);
+                console.log('📚 Cards updated, count:', cardsData.cards.length);
+              } else {
+                console.log('⚠️ No cards found, using demo cards');
+                setDemoCards();
               }
+            } else {
+              console.log('⚠️ Cards API failed, using demo cards');
+              setDemoCards();
             }
           } catch (error) {
             console.log('⚠️ Cards API call failed, using demo data');
+            setDemoCards();
           }
         } catch (error) {
           console.log('⚠️ Background fetch failed, continuing with demo data');

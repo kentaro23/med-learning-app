@@ -87,6 +87,8 @@ export default function CardSetDetailPage() {
   const handleLikeClick = async () => {
     if (!cardSet) return;
     
+    console.log('❤️ Like button clicked, current state:', { isLiked, likeCount });
+    
     try {
       const response = await fetch(`/api/card-sets/${cardSet.id}/like`, {
         method: 'POST',
@@ -94,19 +96,32 @@ export default function CardSetDetailPage() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Like API response:', data);
+        
+        // いいねの状態を更新
         setIsLiked(data.liked);
         
-        // いいね数を更新
+        // いいね数を更新（現在の状態に基づいて計算）
         if (data.liked) {
-          setLikeCount(prev => prev + 1);
-          console.log('👍 Like added, new count:', likeCount + 1);
+          // いいねを追加
+          setLikeCount(prev => {
+            const newCount = prev + 1;
+            console.log('👍 Like added, count updated:', prev, '→', newCount);
+            return newCount;
+          });
         } else {
-          setLikeCount(prev => Math.max(0, prev - 1));
-          console.log('👎 Like removed, new count:', Math.max(0, likeCount - 1));
+          // いいねを取り消し
+          setLikeCount(prev => {
+            const newCount = Math.max(0, prev - 1);
+            console.log('👎 Like removed, count updated:', prev, '→', newCount);
+            return newCount;
+          });
         }
+      } else {
+        console.error('❌ Like API error:', response.status);
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('❌ Error toggling like:', error);
     }
   };
 
@@ -430,14 +445,14 @@ export default function CardSetDetailPage() {
             <div className="flex items-center justify-center">
               <button
                 onClick={handleLikeClick}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-200 ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 ${
                   isLiked
-                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <svg 
-                  className={`w-5 h-5 ${isLiked ? 'fill-current' : 'stroke-current fill-none'}`}
+                  className={`w-6 h-6 ${isLiked ? 'fill-current text-red-100' : 'stroke-current fill-none'}`}
                   viewBox="0 0 24 24"
                 >
                   <path 
@@ -447,12 +462,19 @@ export default function CardSetDetailPage() {
                     d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
                   />
                 </svg>
-                <span className="font-medium">
-                  {isLiked ? 'いいね済み' : 'いいね'}
+                <span className="font-semibold text-lg">
+                  {isLiked ? 'いいね済み ❤️' : 'いいね 🤍'}
                 </span>
-                <span className="text-sm">({likeCount})</span>
+                <span className={`text-sm font-bold ${isLiked ? 'text-red-100' : 'text-gray-600'}`}>
+                  ({likeCount})
+                </span>
               </button>
             </div>
+            {isLiked && (
+              <div className="text-center mt-2">
+                <span className="text-sm text-red-600 font-medium">❤️ いいね済みです！</span>
+              </div>
+            )}
           </div>
         </div>
 

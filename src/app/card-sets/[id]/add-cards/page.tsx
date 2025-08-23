@@ -138,7 +138,21 @@ export default function AddCardsPage() {
           source: ''
         });
         
+        // 成功メッセージを表示
         alert('カードが正常に追加されました！');
+        
+        // カードセットのカード数を更新
+        if (cardSet) {
+          setCardSet(prev => prev ? {
+            ...prev,
+            _count: {
+              ...prev._count,
+              cards: prev._count.cards + 1
+            }
+          } : null);
+        }
+        
+        console.log('🔄 Cards updated, new count:', cards.length + 1);
       } else {
         const errorData = await response.json();
         console.error('❌ API Error:', errorData);
@@ -297,7 +311,7 @@ export default function AddCardsPage() {
             </div>
             <div className="flex gap-3">
               <Link
-                href={`/card-sets/${cardSetId}`}
+                href={`/card-sets/${cardSetId}/study`}
                 className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
               >
                 学習開始
