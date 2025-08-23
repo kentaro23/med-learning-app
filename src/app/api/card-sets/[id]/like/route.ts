@@ -112,10 +112,17 @@ export async function GET(
         },
       });
 
-    return NextResponse.json({
-      success: true,
-      liked: !!like,
-    });
+      return NextResponse.json({
+        success: true,
+        liked: !!like,
+      });
+    } catch (error) {
+      console.error('Error checking like status:', error);
+      return NextResponse.json(
+        { error: 'いいねの状態確認に失敗しました' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error checking like status:', error);
     return NextResponse.json(
@@ -123,5 +130,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
 }

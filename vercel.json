@@ -1,0 +1,4 @@
+{
+  "installCommand": "pnpm -s approve-builds @prisma/client prisma && pnpm i",
+  "buildCommand": "pnpm run build"
+}
