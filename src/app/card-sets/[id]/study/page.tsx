@@ -52,79 +52,54 @@ export default function StudyPage() {
 
   // 単語帳とカードの情報を取得
   useEffect(() => {
-    const fetchCardSetData = async () => {
-      try {
-        console.log('📚 Fetching card set data for:', cardSetId);
-        
-        // API呼び出しにタイムアウトを設定
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒でタイムアウト
-        
-        try {
-          // 単語帳の基本情報を取得
-          const cardSetResponse = await fetch(`/api/card-sets/${cardSetId}`, {
-            signal: controller.signal
-          });
-          console.log('CardSet Response Status:', cardSetResponse.status);
-          
-          if (cardSetResponse.ok) {
-            const cardSetData = await cardSetResponse.json();
-            console.log('CardSet Data:', cardSetData);
-            setCardSet(cardSetData.cardSet);
-          } else {
-            const errorData = await cardSetResponse.json();
-            console.error('CardSet API Error:', errorData);
-            // エラー時はデモデータを使用
-            setDemoCardSet();
-          }
-        } catch (fetchError) {
-          console.error('CardSet fetch error:', fetchError);
-          // フェッチエラー時はデモデータを使用
-          setDemoCardSet();
-        }
-
-        try {
-          // カード一覧を取得
-          const cardsResponse = await fetch(`/api/card-sets/${cardSetId}/cards`, {
-            signal: controller.signal
-          });
-          console.log('Cards Response Status:', cardsResponse.status);
-          
-          if (cardsResponse.ok) {
-            const cardsData = await cardsResponse.json();
-            console.log('Cards Data:', cardsData);
-            setCards(cardsData.cards);
-          } else {
-            const errorData = await cardsResponse.json();
-            console.error('Cards API Error:', errorData);
-            // エラー時はデモデータを使用
-            setDemoCards();
-          }
-        } catch (fetchError) {
-          console.error('Cards fetch error:', fetchError);
-          // フェッチエラー時はデモデータを使用
-          setDemoCards();
-        }
-
-        clearTimeout(timeoutId);
-      } catch (error) {
-        console.error('Error fetching card set data:', error);
-        // エラー時はデモデータを使用
-        setDemoCardSet();
-        setDemoCards();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
+    console.log('🚀 Study page useEffect triggered for cardSetId:', cardSetId);
+    
     if (cardSetId) {
-      // 即座にデモデータを設定してからAPI呼び出し
+      // 即座にデモデータを設定
+      console.log('📚 Setting demo data immediately');
       setDemoCardSet();
       setDemoCards();
       setIsLoading(false);
       
-      // バックグラウンドでAPI呼び出し
-      fetchCardSetData();
+      // バックグラウンドでAPI呼び出し（オプション）
+      const fetchDataInBackground = async () => {
+        try {
+          console.log('🔄 Fetching data in background...');
+          
+          // 単語帳の基本情報を取得
+          try {
+            const cardSetResponse = await fetch(`/api/card-sets/${cardSetId}`);
+            if (cardSetResponse.ok) {
+              const cardSetData = await cardSetResponse.json();
+              console.log('✅ CardSet data fetched successfully:', cardSetData);
+              if (cardSetData.cardSet) {
+                setCardSet(cardSetData.cardSet);
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ CardSet API call failed, using demo data');
+          }
+
+          // カード一覧を取得
+          try {
+            const cardsResponse = await fetch(`/api/card-sets/${cardSetId}/cards`);
+            if (cardsResponse.ok) {
+              const cardsData = await cardsResponse.json();
+              console.log('✅ Cards data fetched successfully:', cardsData);
+              if (cardsData.cards && cardsData.cards.length > 0) {
+                setCards(cardsData.cards);
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ Cards API call failed, using demo data');
+          }
+        } catch (error) {
+          console.log('⚠️ Background fetch failed, continuing with demo data');
+        }
+      };
+
+      // 非同期でバックグラウンド実行
+      fetchDataInBackground();
     }
   }, [cardSetId]);
 
@@ -136,19 +111,22 @@ export default function StudyPage() {
         setIsLoading(false);
         // デモデータが設定されていない場合は設定
         if (!cardSet) {
+          console.log('🔄 Setting demo card set from fallback timer');
           setDemoCardSet();
         }
         if (cards.length === 0) {
+          console.log('🔄 Setting demo cards from fallback timer');
           setDemoCards();
         }
       }
-    }, 3000); // 3秒後にフォールバック
+    }, 2000); // 2秒後にフォールバック
 
     return () => clearTimeout(fallbackTimer);
   }, [isLoading, cardSet, cards.length]);
 
   // デモデータの設定
   const setDemoCardSet = () => {
+    console.log('🎭 Setting demo card set');
     const demoCardSet: CardSet = {
       id: cardSetId,
       title: '神経学の重要ポイント',
@@ -159,10 +137,12 @@ export default function StudyPage() {
       owner: { name: '医学生B' },
       createdAt: new Date('2024-01-10'),
     };
+    console.log('✅ Demo card set created:', demoCardSet);
     setCardSet(demoCardSet);
   };
 
   const setDemoCards = () => {
+    console.log('🎭 Setting demo cards');
     const demoCards: Card[] = [
       {
         id: '1',
@@ -183,13 +163,22 @@ export default function StudyPage() {
         source: '時間的・空間的に多発する脱髄病変が特徴です。'
       }
     ];
+    console.log('✅ Demo cards created:', demoCards);
     setCards(demoCards);
   };
 
   // 学習開始
   const startStudy = () => {
     console.log('🚀 Starting study session');
+    console.log('📊 Current state:', { cardSet, cards: cards.length, isStudyStarted });
+    
     try {
+      if (!cardSet || cards.length === 0) {
+        console.error('❌ Cannot start study: missing data');
+        alert('学習に必要なデータが不足しています。');
+        return;
+      }
+      
       setIsStudyStarted(true);
       setCurrentCardIndex(0);
       setShowAnswer(false);
@@ -305,7 +294,7 @@ export default function StudyPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">単語帳を読み込み中...</p>
             <p className="mt-2 text-sm text-gray-500">しばらくお待ちください</p>
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               <button
                 onClick={() => {
                   console.log('🔄 Manual loading reset triggered');
@@ -313,10 +302,13 @@ export default function StudyPage() {
                   setDemoCardSet();
                   setDemoCards();
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
               >
                 手動で読み込みをリセット
               </button>
+              <div className="text-xs text-gray-500">
+                2秒後に自動的にデモデータが表示されます
+              </div>
             </div>
           </div>
         </div>
