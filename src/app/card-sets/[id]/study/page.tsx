@@ -56,35 +56,57 @@ export default function StudyPage() {
       try {
         console.log('📚 Fetching card set data for:', cardSetId);
         
-        // 単語帳の基本情報を取得
-        const cardSetResponse = await fetch(`/api/card-sets/${cardSetId}`);
-        console.log('CardSet Response Status:', cardSetResponse.status);
+        // API呼び出しにタイムアウトを設定
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒でタイムアウト
         
-        if (cardSetResponse.ok) {
-          const cardSetData = await cardSetResponse.json();
-          console.log('CardSet Data:', cardSetData);
-          setCardSet(cardSetData.cardSet);
-        } else {
-          const errorData = await cardSetResponse.json();
-          console.error('CardSet API Error:', errorData);
-          // エラー時はデモデータを使用
+        try {
+          // 単語帳の基本情報を取得
+          const cardSetResponse = await fetch(`/api/card-sets/${cardSetId}`, {
+            signal: controller.signal
+          });
+          console.log('CardSet Response Status:', cardSetResponse.status);
+          
+          if (cardSetResponse.ok) {
+            const cardSetData = await cardSetResponse.json();
+            console.log('CardSet Data:', cardSetData);
+            setCardSet(cardSetData.cardSet);
+          } else {
+            const errorData = await cardSetResponse.json();
+            console.error('CardSet API Error:', errorData);
+            // エラー時はデモデータを使用
+            setDemoCardSet();
+          }
+        } catch (fetchError) {
+          console.error('CardSet fetch error:', fetchError);
+          // フェッチエラー時はデモデータを使用
           setDemoCardSet();
         }
 
-        // カード一覧を取得
-        const cardsResponse = await fetch(`/api/card-sets/${cardSetId}/cards`);
-        console.log('Cards Response Status:', cardsResponse.status);
-        
-        if (cardsResponse.ok) {
-          const cardsData = await cardsResponse.json();
-          console.log('Cards Data:', cardsData);
-          setCards(cardsData.cards);
-        } else {
-          const errorData = await cardsResponse.json();
-          console.error('Cards API Error:', errorData);
-          // エラー時はデモデータを使用
+        try {
+          // カード一覧を取得
+          const cardsResponse = await fetch(`/api/card-sets/${cardSetId}/cards`, {
+            signal: controller.signal
+          });
+          console.log('Cards Response Status:', cardsResponse.status);
+          
+          if (cardsResponse.ok) {
+            const cardsData = await cardsResponse.json();
+            console.log('Cards Data:', cardsData);
+            setCards(cardsData.cards);
+          } else {
+            const errorData = await cardsResponse.json();
+            console.error('Cards API Error:', errorData);
+            // エラー時はデモデータを使用
+            setDemoCards();
+          }
+        } catch (fetchError) {
+          console.error('Cards fetch error:', fetchError);
+          // フェッチエラー時はデモデータを使用
           setDemoCards();
         }
+
+        clearTimeout(timeoutId);
       } catch (error) {
         console.error('Error fetching card set data:', error);
         // エラー時はデモデータを使用
@@ -96,9 +118,34 @@ export default function StudyPage() {
     };
 
     if (cardSetId) {
+      // 即座にデモデータを設定してからAPI呼び出し
+      setDemoCardSet();
+      setDemoCards();
+      setIsLoading(false);
+      
+      // バックグラウンドでAPI呼び出し
       fetchCardSetData();
     }
   }, [cardSetId]);
+
+  // フォールバックタイマー（万が一の無限ローディング防止）
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (isLoading) {
+        console.log('⚠️ Fallback timer triggered - forcing loading to false');
+        setIsLoading(false);
+        // デモデータが設定されていない場合は設定
+        if (!cardSet) {
+          setDemoCardSet();
+        }
+        if (cards.length === 0) {
+          setDemoCards();
+        }
+      }
+    }, 3000); // 3秒後にフォールバック
+
+    return () => clearTimeout(fallbackTimer);
+  }, [isLoading, cardSet, cards.length]);
 
   // デモデータの設定
   const setDemoCardSet = () => {
@@ -257,6 +304,20 @@ export default function StudyPage() {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">単語帳を読み込み中...</p>
+            <p className="mt-2 text-sm text-gray-500">しばらくお待ちください</p>
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  console.log('🔄 Manual loading reset triggered');
+                  setIsLoading(false);
+                  setDemoCardSet();
+                  setDemoCards();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                手動で読み込みをリセット
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -269,10 +330,21 @@ export default function StudyPage() {
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <p className="text-red-600">単語帳が見つかりません</p>
-            <Link href="/card-sets" className="text-blue-600 hover:underline mt-2 inline-block">
-              単語帳一覧に戻る
-            </Link>
+            <p className="text-red-600 mb-4">単語帳の読み込みに失敗しました</p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  console.log('🔄 Retrying card set data fetch');
+                  setDemoCardSet();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mr-3"
+              >
+                再試行
+              </button>
+              <Link href="/card-sets" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                単語帳一覧に戻る
+              </Link>
+            </div>
           </div>
         </div>
       </div>
