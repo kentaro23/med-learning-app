@@ -171,50 +171,7 @@ export default function CardSetDetailPage() {
     );
   }
 
-  const startStudy = async () => {
-    // 使用制限チェック
-    try {
-      const response = await fetch('/api/usage/check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ feature: 'cardSets' }),
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status === 429) {
-          // 使用制限に達した場合
-          alert(`使用制限に達しました: ${errorData.details}`);
-          return;
-        }
-        // エラーが発生した場合でも、デモアカウントの場合は学習を開始
-        console.warn('Usage check failed, but proceeding for demo account:', errorData);
-      } else {
-        const usageData = await response.json();
-        console.log('✅ Usage check passed:', usageData.message);
-      }
-
-      // 学習開始
-      setIsStudyMode(true);
-      setCurrentCardIndex(0);
-      setShowAnswer(false);
-      setStudyResults({});
-      setStudyStartTime(Date.now());
-    } catch (error) {
-      console.error('Usage check error:', error);
-      // エラーが発生した場合でも、デモアカウントの場合は学習を開始
-      console.warn('Usage check failed, but proceeding for demo account');
-      
-      // 学習開始
-      setIsStudyMode(true);
-      setCurrentCardIndex(0);
-      setShowAnswer(false);
-      setStudyResults({});
-      setStudyStartTime(Date.now());
-    }
-  };
 
   const nextCard = () => {
     if (currentCardIndex < cards.length - 1) {
@@ -410,12 +367,12 @@ export default function CardSetDetailPage() {
               >
                 カードを追加
               </Link>
-              <button
-                onClick={startStudy}
+              <Link
+                href={`/card-sets/${params.id}/study`}
                 className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg"
               >
                 学習開始
-              </button>
+              </Link>
             </div>
           </div>
         </div>

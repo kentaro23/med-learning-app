@@ -165,29 +165,65 @@ export default function AddCardsPage() {
   };
 
   const startPractice = () => {
-    setShowPracticeModal(true);
-    setCurrentPracticeIndex(0);
-    setShowPracticeAnswer(false);
-    setPracticeResults({});
+    console.log('🚀 Starting practice with cards:', cards);
+    
+    // カードデータの存在確認
+    if (!cards || cards.length === 0) {
+      alert('演習するカードがありません。カードを追加してから演習を開始してください。');
+      return;
+    }
+    
+    try {
+      setShowPracticeModal(true);
+      setCurrentPracticeIndex(0);
+      setShowPracticeAnswer(false);
+      setPracticeResults({});
+      console.log('✅ Practice modal opened successfully');
+    } catch (error) {
+      console.error('❌ Error starting practice:', error);
+      alert('問題演習の開始に失敗しました。');
+    }
   };
 
   const nextPracticeCard = () => {
-    if (currentPracticeIndex < cards.length - 1) {
-      setCurrentPracticeIndex(currentPracticeIndex + 1);
-      setShowPracticeAnswer(false);
-    } else {
-      // 演習完了
-      setShowPracticeModal(false);
-      alert('問題演習が完了しました！');
+    console.log('🔄 Moving to next card. Current:', currentPracticeIndex, 'Total:', cards.length);
+    
+    try {
+      if (currentPracticeIndex < cards.length - 1) {
+        setCurrentPracticeIndex(currentPracticeIndex + 1);
+        setShowPracticeAnswer(false);
+        console.log('✅ Moved to next card:', currentPracticeIndex + 1);
+      } else {
+        // 演習完了
+        console.log('🎉 Practice completed!');
+        setShowPracticeModal(false);
+        alert('問題演習が完了しました！');
+      }
+    } catch (error) {
+      console.error('❌ Error moving to next card:', error);
+      alert('次の問題に進む際にエラーが発生しました。');
     }
   };
 
   const recordPracticeResult = (result: 'correct' | 'incorrect' | 'skip') => {
-    const currentCard = cards[currentPracticeIndex];
-    setPracticeResults(prev => ({
-      ...prev,
-      [currentCard.id]: result
-    }));
+    console.log('📝 Recording practice result:', result, 'for card index:', currentPracticeIndex);
+    
+    try {
+      const currentCard = cards[currentPracticeIndex];
+      if (!currentCard) {
+        console.error('❌ Current card not found at index:', currentPracticeIndex);
+        return;
+      }
+      
+      setPracticeResults(prev => ({
+        ...prev,
+        [currentCard.id]: result
+      }));
+      console.log('✅ Practice result recorded successfully');
+    } catch (error) {
+      console.error('❌ Error recording practice result:', error);
+      alert('結果の記録に失敗しました。');
+    }
   };
 
   if (isLoading) {
@@ -433,7 +469,17 @@ export default function AddCardsPage() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">問題演習</h2>
               <button
-                onClick={() => setShowPracticeModal(false)}
+                onClick={() => {
+                  console.log('🔒 Closing practice modal');
+                  try {
+                    setShowPracticeModal(false);
+                    setCurrentPracticeIndex(0);
+                    setShowPracticeAnswer(false);
+                    console.log('✅ Practice modal closed successfully');
+                  } catch (error) {
+                    console.error('❌ Error closing practice modal:', error);
+                  }
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,7 +488,7 @@ export default function AddCardsPage() {
               </button>
             </div>
 
-            {cards.length > 0 && (
+            {cards.length > 0 && currentPracticeIndex < cards.length && cards[currentPracticeIndex] && (
               <div className="space-y-6">
                 {/* 進捗表示 */}
                 <div className="text-center">
@@ -460,7 +506,7 @@ export default function AddCardsPage() {
                 {/* 問題表示 */}
                 <div className="bg-gray-50 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">問題</h3>
-                  <p className="text-gray-800 text-lg">{cards[currentPracticeIndex].question}</p>
+                  <p className="text-gray-800 text-lg">{cards[currentPracticeIndex]?.question || '問題を読み込み中...'}</p>
                 </div>
 
                 {/* 答え表示/非表示 */}
@@ -477,8 +523,8 @@ export default function AddCardsPage() {
                   <div className="space-y-4">
                     <div className="bg-green-50 rounded-lg p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">答え</h3>
-                      <p className="text-gray-800 text-lg">{cards[currentPracticeIndex].answer}</p>
-                      {cards[currentPracticeIndex].source && (
+                      <p className="text-gray-800 text-lg">{cards[currentPracticeIndex]?.answer || '答えを読み込み中...'}</p>
+                      {cards[currentPracticeIndex]?.source && (
                         <div className="mt-3">
                           <p className="text-sm text-gray-600 mb-1">アドバイス・ソース:</p>
                           <p className="text-gray-700">{cards[currentPracticeIndex].source}</p>

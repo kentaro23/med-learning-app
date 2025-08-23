@@ -1,0 +1,525 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+interface Card {
+  id: string;
+  question: string;
+  answer: string;
+  source?: string;
+}
+
+interface CardSet {
+  id: string;
+  title: string;
+  description: string;
+  tags: string;
+  visibility: string;
+  _count: { cards: number; likes: number; bookmarks: number };
+  owner: { name: string };
+  createdAt: Date;
+}
+
+export default function StudyPage() {
+  const params = useParams();
+  const router = useRouter();
+  const cardSetId = params.id as string;
+  
+  const [cardSet, setCardSet] = useState<CardSet | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [studyResults, setStudyResults] = useState<{ [key: string]: 'correct' | 'incorrect' | 'skip' }>({});
+  const [studyStartTime, setStudyStartTime] = useState<number>(0);
+  const [isStudyStarted, setIsStudyStarted] = useState(false);
+
+  // 安全な日付表示関数
+  const formatDate = (dateValue: string | Date) => {
+    try {
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue).toLocaleDateString('ja-JP');
+      } else if (dateValue instanceof Date) {
+        return dateValue.toLocaleDateString('ja-JP');
+      }
+      return '日付不明';
+    } catch (error) {
+      return '日付不明';
+    }
+  };
+
+  // 単語帳とカードの情報を取得
+  useEffect(() => {
+    const fetchCardSetData = async () => {
+      try {
+        console.log('📚 Fetching card set data for:', cardSetId);
+        
+        // 単語帳の基本情報を取得
+        const cardSetResponse = await fetch(`/api/card-sets/${cardSetId}`);
+        console.log('CardSet Response Status:', cardSetResponse.status);
+        
+        if (cardSetResponse.ok) {
+          const cardSetData = await cardSetResponse.json();
+          console.log('CardSet Data:', cardSetData);
+          setCardSet(cardSetData.cardSet);
+        } else {
+          const errorData = await cardSetResponse.json();
+          console.error('CardSet API Error:', errorData);
+          // エラー時はデモデータを使用
+          setDemoCardSet();
+        }
+
+        // カード一覧を取得
+        const cardsResponse = await fetch(`/api/card-sets/${cardSetId}/cards`);
+        console.log('Cards Response Status:', cardsResponse.status);
+        
+        if (cardsResponse.ok) {
+          const cardsData = await cardsResponse.json();
+          console.log('Cards Data:', cardsData);
+          setCards(cardsData.cards);
+        } else {
+          const errorData = await cardsResponse.json();
+          console.error('Cards API Error:', errorData);
+          // エラー時はデモデータを使用
+          setDemoCards();
+        }
+      } catch (error) {
+        console.error('Error fetching card set data:', error);
+        // エラー時はデモデータを使用
+        setDemoCardSet();
+        setDemoCards();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (cardSetId) {
+      fetchCardSetData();
+    }
+  }, [cardSetId]);
+
+  // デモデータの設定
+  const setDemoCardSet = () => {
+    const demoCardSet: CardSet = {
+      id: cardSetId,
+      title: '神経学の重要ポイント',
+      description: '神経系の診断と治療',
+      tags: '神経学,診断,治療',
+      visibility: 'public',
+      _count: { cards: 3, likes: 15, bookmarks: 18 },
+      owner: { name: '医学生B' },
+      createdAt: new Date('2024-01-10'),
+    };
+    setCardSet(demoCardSet);
+  };
+
+  const setDemoCards = () => {
+    const demoCards: Card[] = [
+      {
+        id: '1',
+        question: '脳梗塞の初期症状として最も重要なのは？',
+        answer: '片麻痺',
+        source: '脳梗塞では片側の運動麻痺が最も特徴的な初期症状です。'
+      },
+      {
+        id: '2',
+        question: 'パーキンソン病の三大症状は？',
+        answer: '振戦、筋固縮、無動',
+        source: 'パーキンソン病の主要症状として知られています。'
+      },
+      {
+        id: '3',
+        question: '多発性硬化症の特徴的な所見は？',
+        answer: '時間的多発性と空間的多発性',
+        source: '時間的・空間的に多発する脱髄病変が特徴です。'
+      }
+    ];
+    setCards(demoCards);
+  };
+
+  // 学習開始
+  const startStudy = () => {
+    console.log('🚀 Starting study session');
+    try {
+      setIsStudyStarted(true);
+      setCurrentCardIndex(0);
+      setShowAnswer(false);
+      setStudyResults({});
+      setStudyStartTime(Date.now());
+      console.log('✅ Study session started successfully');
+    } catch (error) {
+      console.error('❌ Error starting study session:', error);
+      alert('学習の開始に失敗しました。');
+    }
+  };
+
+  // 次のカード
+  const nextCard = () => {
+    console.log('🔄 Moving to next card. Current:', currentCardIndex, 'Total:', cards.length);
+    
+    try {
+      if (currentCardIndex < cards.length - 1) {
+        setCurrentCardIndex(currentCardIndex + 1);
+        setShowAnswer(false);
+        console.log('✅ Moved to next card:', currentCardIndex + 1);
+      } else {
+        // 学習完了
+        console.log('🎉 Study completed!');
+        completeStudy();
+      }
+    } catch (error) {
+      console.error('❌ Error moving to next card:', error);
+      alert('次のカードに進む際にエラーが発生しました。');
+    }
+  };
+
+  // 前のカード
+  const previousCard = () => {
+    console.log('🔄 Moving to previous card. Current:', currentCardIndex);
+    
+    try {
+      if (currentCardIndex > 0) {
+        setCurrentCardIndex(currentCardIndex - 1);
+        setShowAnswer(false);
+        console.log('✅ Moved to previous card:', currentCardIndex - 1);
+      }
+    } catch (error) {
+      console.error('❌ Error moving to previous card:', error);
+      alert('前のカードに戻る際にエラーが発生しました。');
+    }
+  };
+
+  // 学習完了
+  const completeStudy = () => {
+    console.log('🏁 Completing study session');
+    
+    try {
+      // 学習結果を整形
+      const results = cards.map(card => ({
+        cardId: card.id,
+        result: studyResults[card.id] || 'skip',
+        question: card.question,
+        answer: card.answer,
+        explanation: card.source
+      }));
+
+      // 学習時間を計算（秒）
+      const studyTime = Math.round((Date.now() - studyStartTime) / 1000);
+
+      console.log('📊 Study results:', results);
+      console.log('⏱️ Study time:', studyTime, 'seconds');
+
+      // 結果画面にリダイレクト
+      const resultsParam = encodeURIComponent(JSON.stringify(results));
+      router.push(`/card-sets/${cardSetId}/result?results=${resultsParam}&time=${studyTime}`);
+    } catch (error) {
+      console.error('❌ Error completing study:', error);
+      alert('学習の完了処理に失敗しました。');
+    }
+  };
+
+  // 答えの評価
+  const markAnswer = (result: 'correct' | 'incorrect' | 'skip') => {
+    console.log('📝 Marking answer:', result, 'for card:', currentCardIndex);
+    
+    try {
+      const currentCard = cards[currentCardIndex];
+      if (!currentCard) {
+        console.error('❌ Current card not found at index:', currentCardIndex);
+        return;
+      }
+      
+      setStudyResults(prev => ({
+        ...prev,
+        [currentCard.id]: result
+      }));
+      console.log('✅ Answer marked successfully');
+      nextCard();
+    } catch (error) {
+      console.error('❌ Error marking answer:', error);
+      alert('答えの評価に失敗しました。');
+    }
+  };
+
+  // 進捗率の計算
+  const getProgressPercentage = () => {
+    const answered = Object.keys(studyResults).length;
+    return Math.round((answered / cards.length) * 100);
+  };
+
+  // ローディング中
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">単語帳を読み込み中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 単語帳が見つからない場合
+  if (!cardSet) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <p className="text-red-600">単語帳が見つかりません</p>
+            <Link href="/card-sets" className="text-blue-600 hover:underline mt-2 inline-block">
+              単語帳一覧に戻る
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 学習開始前の画面
+  if (!isStudyStarted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+        <div className="container mx-auto px-4 py-8">
+          {/* ヘッダー */}
+          <div className="mb-8">
+            <Link 
+              href={`/card-sets/${cardSetId}`}
+              className="inline-flex items-center text-green-600 hover:text-green-800 mb-4"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              単語帳詳細に戻る
+            </Link>
+            
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">{cardSet.title}</h1>
+              <p className="text-xl text-gray-600 mb-8">{cardSet.description}</p>
+              
+              <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">学習準備</h2>
+                
+                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-600">{cards.length}</div>
+                    <div className="text-gray-600">カード数</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-600">{cardSet._count.likes}</div>
+                    <div className="text-gray-600">いいね数</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>作成者:</span>
+                    <span className="font-medium">{cardSet.owner.name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>作成日:</span>
+                    <span className="font-medium">{formatDate(cardSet.createdAt)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>公開設定:</span>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      cardSet.visibility === 'public' ? 'bg-green-100 text-green-800' :
+                      cardSet.visibility === 'unlisted' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {cardSet.visibility === 'public' ? '公開' : 
+                       cardSet.visibility === 'unlisted' ? '限定公開' : '非公開'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mt-8">
+                  <button
+                    onClick={startStudy}
+                    disabled={cards.length === 0}
+                    className={`w-full py-4 px-8 rounded-lg text-lg font-semibold transition-colors ${
+                      cards.length === 0 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {cards.length === 0 ? 'カードがありません' : '学習を開始する'}
+                  </button>
+                  
+                  {cards.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center mt-2">
+                      カードを追加してから学習を開始してください
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 学習中の画面
+  const currentCard = cards[currentCardIndex];
+  const progress = getProgressPercentage();
+  
+  if (!currentCard) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <p className="text-red-600">カードの読み込みに失敗しました</p>
+            <button
+              onClick={() => setIsStudyStarted(false)}
+              className="text-blue-600 hover:underline mt-2"
+            >
+              学習準備画面に戻る
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+      <div className="container mx-auto px-4 py-8">
+        {/* ヘッダー */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <Link 
+              href={`/card-sets/${cardSetId}`}
+              className="inline-flex items-center text-green-600 hover:text-green-800"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              単語帳詳細に戻る
+            </Link>
+            
+            <div className="text-right">
+              <h1 className="text-2xl font-bold text-gray-900">{cardSet.title}</h1>
+              <p className="text-gray-600">学習中</p>
+            </div>
+          </div>
+          
+          {/* 進捗バー */}
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                進捗: {currentCardIndex + 1} / {cards.length}
+              </span>
+              <span className="text-sm font-medium text-gray-700">
+                {progress}% 完了
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* カード表示 */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+            {/* 問題 */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">問題</h2>
+              <div className="bg-gray-50 rounded-lg p-6">
+                <p className="text-2xl text-gray-900 leading-relaxed">{currentCard.question}</p>
+              </div>
+            </div>
+
+            {/* 答え */}
+            {!showAnswer ? (
+              <div className="text-center">
+                <button
+                  onClick={() => setShowAnswer(true)}
+                  className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold"
+                >
+                  答えを見る
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-green-50 rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">答え</h3>
+                  <p className="text-2xl text-gray-800 leading-relaxed mb-4">{currentCard.answer}</p>
+                  {currentCard.source && (
+                    <div className="bg-white rounded-lg p-4">
+                      <p className="text-sm text-gray-600 mb-2">アドバイス・ソース:</p>
+                      <p className="text-gray-700">{currentCard.source}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 評価ボタン */}
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={() => markAnswer('correct')}
+                    className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors text-lg font-semibold"
+                  >
+                    正解
+                  </button>
+                  <button
+                    onClick={() => markAnswer('incorrect')}
+                    className="bg-red-600 text-white px-8 py-4 rounded-lg hover:bg-red-700 transition-colors text-lg font-semibold"
+                  >
+                    不正解
+                  </button>
+                  <button
+                    onClick={() => markAnswer('skip')}
+                    className="bg-gray-600 text-white px-8 py-4 rounded-lg hover:bg-gray-700 transition-colors text-lg font-semibold"
+                  >
+                    スキップ
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ナビゲーションボタン */}
+          <div className="flex justify-between items-center">
+            <button
+              onClick={previousCard}
+              disabled={currentCardIndex === 0}
+              className={`px-6 py-3 rounded-lg transition-colors ${
+                currentCardIndex === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gray-600 text-white hover:bg-gray-700'
+              }`}
+            >
+              前の問題
+            </button>
+            
+            <button
+              onClick={() => setIsStudyStarted(false)}
+              className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+            >
+              学習を中断
+            </button>
+            
+            <button
+              onClick={nextCard}
+              disabled={currentCardIndex === cards.length - 1}
+              className={`px-6 py-3 rounded-lg transition-colors ${
+                currentCardIndex === cards.length - 1
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              次の問題
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
