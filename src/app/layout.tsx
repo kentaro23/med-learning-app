@@ -6,7 +6,11 @@ export const metadata: Metadata = {
   description: "AIによる問題作成、単語帳、PDF穴埋めで医学学習を効率化するプラットフォーム",
   keywords: "医学,学習,AI,問題作成,単語帳,PDF,穴埋め",
   authors: [{ name: "Med Memo AI Team" }],
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
