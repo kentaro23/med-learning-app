@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireSession } from '@/server/require-session';
+import { prisma } from '@/lib/prisma';
 
-// Prismaクライアントを動的にインポート
-let prisma: any = null;
+export const dynamic = 'force-dynamic';
 
 const createCardSetSchema = z.object({
   title: z.string().min(1, 'タイトルは必須です'),
@@ -15,122 +16,35 @@ const createCardSetSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Prismaクライアントを動的にインポート
-    try {
-      const { PrismaClient } = await import('@prisma/client');
-      prisma = new PrismaClient();
-    } catch (error) {
-      console.error('Prisma import error:', error);
-      // Prismaが利用できない場合はモックデータを返す
-      return NextResponse.json({
-        success: true,
-        cardSet: {
-          id: `mock-${Date.now()}`,
-          title: 'モック単語帳',
-          description: 'データベース接続が利用できないため、モックデータを返しています',
-          visibility: 'public',
-          tags: 'モック,テスト',
-          ownerId: 'demo-user-123',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          owner: {
-            name: 'デモユーザー',
-            email: 'demo@med.ai',
-          },
-          _count: {
-            cards: 0,
-            likes: 0,
-            bookmarks: 0,
-          },
-        },
-        message: 'モック単語帳が作成されました（データベース接続なし）'
-      });
-    }
-
-    // セッションクッキーからユーザー情報を取得
-    const sessionCookie = request.cookies.get('next-auth.session-token');
-    
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      );
-    }
-
-    // デモユーザーの場合は特別処理
-    let userId = 'demo-user-123';
-    
-    // セッションクッキーがデモセッションの場合は、実際のデモユーザーIDを使用
-    if (sessionCookie.value === 'demo-session-token') {
-      try {
-        const demoUser = await prisma.user.findUnique({
-          where: { email: 'demo@med.ai' },
-          select: { id: true }
-        });
-        
-        if (demoUser) {
-          userId = demoUser.id;
-        }
-      } catch (error) {
-        console.error('Demo user lookup error:', error);
-        // エラー時はデフォルトのデモユーザーIDを使用
-        userId = 'demo-user-123';
-      }
-    }
-
+    const session = await requireSession();
     const body = await request.json();
     const validatedData = createCardSetSchema.parse(body);
 
     // 単語帳を作成
-    let cardSet;
-    try {
-      cardSet = await prisma.cardSet.create({
-        data: {
-          title: validatedData.title,
-          description: validatedData.description || '',
-          visibility: validatedData.visibility,
-          tags: `${validatedData.category},${validatedData.subcategory}${validatedData.tags ? ',' + validatedData.tags : ''}`,
-          ownerId: userId,
-        },
-        include: {
-          owner: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              cards: true,
-              likes: true,
-              bookmarks: true,
-            },
-          },
-        },
-      });
-    } catch (dbError) {
-      console.error('Database creation error:', dbError);
-      // データベース作成に失敗した場合はモックデータを返す
-      cardSet = {
-        id: `mock-${Date.now()}`,
+    const cardSet = await prisma.cardSet.create({
+      data: {
         title: validatedData.title,
         description: validatedData.description || '',
         visibility: validatedData.visibility,
         tags: `${validatedData.category},${validatedData.subcategory}${validatedData.tags ? ',' + validatedData.tags : ''}`,
-        ownerId: userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        ownerId: (session.user as any).id,
+      },
+      include: {
         owner: {
-          name: 'デモユーザー',
-          email: 'demo@med.ai',
+          select: {
+            name: true,
+            email: true,
+          },
         },
         _count: {
-          cards: 0,
-          likes: 0,
-          bookmarks: 0,
+          select: {
+            cards: true,
+            likes: true,
+            bookmarks: true,
+          },
         },
-      };
-    }
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -145,6 +59,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: '無効なリクエストデータです', details: error },
         { status: 400 }
+      );
+    }
+    
+    if ((error as any).status === 401) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
       );
     }
     

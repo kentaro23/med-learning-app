@@ -1,32 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { requireSession } from '@/server/require-session';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(request: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   try {
-    // 一時的に認証をスキップ
-    // const session = await getServerSession(authOptions);
-    // if (!session?.user?.email) {
-    //   return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
-    // }
-
-    const { prisma } = await import('@/lib/prisma');
-    
-    // デモユーザーのID（実際の実装ではセッションから取得）
-    const demoUserId = 'cmem7jgsq0000lfpt8nazchpg';
+    const session = await requireSession();
     
     const cardSets = await prisma.cardSet.findMany({
-      where: {
-        ownerId: demoUserId,
-      },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+      where: { ownerId: (session.user as any).id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        tags: true,
+        visibility: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             cards: true,
@@ -34,20 +26,31 @@ export async function GET(request: NextRequest) {
             bookmarks: true,
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
+        owner: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      cardSets 
+      cardSets,
     });
   } catch (error) {
-    console.error('Error fetching user card sets:', error);
+    console.error('Error fetching my card sets:', error);
+    
+    if ((error as any).status === 401) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: '単語帳の取得に失敗しました' },
+      { error: 'カードセットの取得に失敗しました' },
       { status: 500 }
     );
   }

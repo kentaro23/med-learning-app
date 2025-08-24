@@ -1,20 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireSession } from '@/server/require-session';
+import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await requireSession();
     const { id: cardSetId } = await params;
     
-    // シンプルないいね切り替え（モック実装）
-    // TODO: 後でPrismaを使用した完全な実装に置き換え
-    return NextResponse.json({
-      success: true,
-      liked: true, // 常にいいね済みとして返す（モック）
+    // 既存のいいねを確認
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        userId_cardSetId: {
+          userId: (session.user as any).id,
+          cardSetId: cardSetId,
+        },
+      },
     });
+
+    if (existingLike) {
+      // いいねを削除
+      await prisma.like.delete({
+        where: {
+          userId_cardSetId: {
+            userId: (session.user as any).id,
+            cardSetId: cardSetId,
+          },
+        },
+      });
+      
+      return NextResponse.json({
+        success: true,
+        liked: false,
+      });
+    } else {
+      // いいねを追加
+      await prisma.like.create({
+        data: {
+          userId: (session.user as any).id,
+          cardSetId: cardSetId,
+        },
+      });
+      
+      return NextResponse.json({
+        success: true,
+        liked: true,
+      });
+    }
   } catch (error) {
     console.error('Error toggling like:', error);
+    
+    if ((error as any).status === 401) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'いいねの操作に失敗しました' },
       { status: 500 }
@@ -27,22 +73,36 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await requireSession();
     const { id: cardSetId } = await params;
     
-    // シンプルないいね状態確認（モック実装）
-    // TODO: 後でPrismaを使用した完全な実装に置き換え
+    // いいね状態を確認
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        userId_cardSetId: {
+          userId: (session.user as any).id,
+          cardSetId: cardSetId,
+        },
+      },
+    });
+    
     return NextResponse.json({
       success: true,
-      liked: false, // デフォルトでいいねなし
+      liked: !!existingLike,
     });
   } catch (error) {
     console.error('Error checking like status:', error);
+    
+    if ((error as any).status === 401) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'いいねの状態確認に失敗しました' },
       { status: 500 }
     );
   }
 }
-
-// Optional: avoid static optimization on API route
-export const dynamic = 'force-dynamic';
