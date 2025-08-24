@@ -34,6 +34,7 @@ export default function CardSetsPage() {
   const [cardSets, setCardSets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'my' | 'added'>('all');
+  const [likedStates, setLikedStates] = useState<{ [key: string]: boolean }>({});
 
   // 安全な日付表示関数
   const formatDate = (dateValue: string | Date) => {
@@ -98,6 +99,34 @@ export default function CardSetsPage() {
     public: '公開',
     unlisted: '限定公開',
     private: '非公開',
+  };
+
+  // いいねボタンのクリックハンドラー
+  const handleLikeClick = async (cardSetId: string) => {
+    try {
+      const currentLiked = likedStates[cardSetId] || false;
+      const newLikedState = !currentLiked;
+      
+      // 即座にUIを更新（楽観的更新）
+      setLikedStates(prev => ({ ...prev, [cardSetId]: newLikedState }));
+      
+      // API呼び出し
+      const response = await fetch(`/api/card-sets/${cardSetId}/like`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // APIの結果に基づいて状態を最終確定
+        setLikedStates(prev => ({ ...prev, [cardSetId]: data.liked }));
+      } else {
+        // APIエラー時は元の状態に戻す
+        setLikedStates(prev => ({ ...prev, [cardSetId]: currentLiked }));
+      }
+    } catch (error) {
+      // エラー時は元の状態に戻す
+      setLikedStates(prev => ({ ...prev, [cardSetId]: likedStates[cardSetId] || false }));
+    }
   };
 
   return (
@@ -264,8 +293,15 @@ export default function CardSetsPage() {
                   >
                     学習開始
                   </Link>
-                  <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button 
+                    onClick={() => handleLikeClick(cardSet.id)}
+                    className={`px-3 py-2 border rounded-lg transition-colors ${
+                      likedStates[cardSet.id] 
+                        ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100' 
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg className={`w-5 h-5 ${likedStates[cardSet.id] ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                   </button>

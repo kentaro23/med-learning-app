@@ -7,12 +7,11 @@ export async function POST(
   try {
     const { id: cardSetId } = await params;
     
-    // 基本的ないいね機能（モック実装）
+    // シンプルないいね切り替え（モック実装）
     // TODO: 後でPrismaを使用した完全な実装に置き換え
     return NextResponse.json({
       success: true,
-      message: 'いいねの状態を更新しました',
-      liked: true,
+      liked: true, // 常にいいね済みとして返す（モック）
     });
   } catch (error) {
     console.error('Error toggling like:', error);
@@ -30,7 +29,7 @@ export async function GET(
   try {
     const { id: cardSetId } = await params;
     
-    // 基本的ないいね状態確認（モック実装）
+    // シンプルないいね状態確認（モック実装）
     // TODO: 後でPrismaを使用した完全な実装に置き換え
     return NextResponse.json({
       success: true,

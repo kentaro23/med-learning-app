@@ -87,27 +87,15 @@ export default function CardSetDetailPage() {
   const handleLikeClick = async () => {
     if (!cardSet) return;
     
-    console.log('❤️ Like button clicked, current state:', { isLiked, likeCount });
-    
     try {
       // 即座にUIを更新（楽観的更新）
       const newLikedState = !isLiked;
       setIsLiked(newLikedState);
       
       if (newLikedState) {
-        // いいねを追加
-        setLikeCount(prev => {
-          const newCount = prev + 1;
-          console.log('👍 Like added, count updated:', prev, '→', newCount);
-          return newCount;
-        });
+        setLikeCount(prev => prev + 1);
       } else {
-        // いいねを取り消し
-        setLikeCount(prev => {
-          const newCount = Math.max(0, prev - 1);
-          console.log('👎 Like removed, count updated:', prev, '→', newCount);
-          return newCount;
-        });
+        setLikeCount(prev => Math.max(0, prev - 1));
       }
       
       // API呼び出し
@@ -117,24 +105,18 @@ export default function CardSetDetailPage() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Like API response:', data);
-        
         // APIの結果に基づいて状態を最終確定
         setIsLiked(data.liked);
         setLikeCount(data.liked ? likeCount + 1 : Math.max(0, likeCount - 1));
       } else {
-        console.error('❌ Like API error:', response.status);
         // APIエラー時は元の状態に戻す
         setIsLiked(!newLikedState);
         setLikeCount(newLikedState ? Math.max(0, likeCount - 1) : likeCount + 1);
-        alert('いいねの更新に失敗しました。もう一度お試しください。');
       }
     } catch (error) {
-      console.error('❌ Error toggling like:', error);
       // エラー時は元の状態に戻す
       setIsLiked(!isLiked);
       setLikeCount(isLiked ? likeCount + 1 : Math.max(0, likeCount - 1));
-      alert('いいねの更新に失敗しました。もう一度お試しください。');
     }
   };
 
