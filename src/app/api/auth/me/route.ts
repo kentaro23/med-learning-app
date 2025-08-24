@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // セッションからユーザー情報を取得
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!session?.user || !(session.user as any).id) {
       console.log('⚠️ No valid session found');
       return NextResponse.json(
         { error: '認証が必要です' },

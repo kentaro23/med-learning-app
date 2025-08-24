@@ -3,6 +3,7 @@ import { NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
+import { sendWelcomeEmail } from "@/server/email";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -61,8 +62,7 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       try {
-        // TODO: welcome email実装
-        console.log('🎉 New user created:', user.email);
+        await sendWelcomeEmail({ email: user.email!, name: user.name || undefined });
       } catch (error) {
         console.error('Welcome email failed:', error);
       }
