@@ -479,32 +479,6 @@ export default function CardSetDetailPage() {
                 </span>
               </button>
             </div>
-            {isLiked && (
-              <div className="text-center mt-2">
-                <span className="text-sm text-red-600 font-medium">❤️ いいね済みです！</span>
-              </div>
-            )}
-            {/* デバッグ用ボタン */}
-            <div className="text-center mt-2 space-x-2">
-              <button
-                onClick={() => {
-                  console.log('🔍 Debug: Current state:', { isLiked, likeCount, cardSet: !!cardSet });
-                  alert(`現在の状態:\nいいね: ${isLiked ? 'ON' : 'OFF'}\nいいね数: ${likeCount}\nカードセット: ${cardSet ? '読み込み済み' : '未読み込み'}`);
-                }}
-                className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
-              >
-                状態確認
-              </button>
-              <button
-                onClick={() => {
-                  setIsLiked(!isLiked);
-                  console.log('🔄 Debug: Toggle like state to:', !isLiked);
-                }}
-                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-              >
-                状態切り替え
-              </button>
-            </div>
           </div>
         </div>
 
