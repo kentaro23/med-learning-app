@@ -46,14 +46,26 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       // Persist user id on token
-      if (user) token.uid = (user as any).id;
+      if (user) {
+        (token as any).uid = (user as any).id;
+      }
       return token;
     },
-    async session({ session, token }) {
-      if (session?.user && token?.uid) {
-        (session.user as any).id = token.uid as string;
+    async session({ session, token, user }) {
+      if (session?.user && (token as any)?.uid) {
+        (session.user as any).id = (token as any).uid as string;
       }
       return session;
+    }
+  },
+  events: {
+    async createUser({ user }) {
+      try {
+        // TODO: welcome email実装
+        console.log('🎉 New user created:', user.email);
+      } catch (error) {
+        console.error('Welcome email failed:', error);
+      }
     }
   }
 };

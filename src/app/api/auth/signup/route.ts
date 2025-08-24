@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
 
 const signUpSchema = z.object({
   name: z.string().min(2).max(50),
   email: z.string().email(),
   password: z.string().min(6).max(100),
-  university: z.string().min(1),
-  grade: z.string().min(1),
-  major: z.string().min(1),
+  school: z.string().optional(),
+  university: z.string().optional(),
+  grade: z.string().optional(),
+  major: z.string().optional(),
 });
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,30 +22,54 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📋 Request body:', { ...body, password: '[HIDDEN]' });
     
-    const { name, email, password, university, grade, major } = signUpSchema.parse(body);
+    const { name, email, password, school, university, grade, major } = signUpSchema.parse(body);
     console.log('✅ Data validation passed');
 
-    // 一時的にデータベースを使わずにモックデータを返す
-    console.log('🎭 Using mock data for now (database issue)');
-    
-    // モックユーザーIDを生成
-    const mockUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log('✅ Mock user created successfully:', { id: mockUserId, name, email, university, grade, major });
+    // 既存ユーザーの確認
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'このメールアドレスは既に登録されています' },
+        { status: 409 }
+      );
+    }
+
+    // パスワードのハッシュ化
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // ユーザーの作成
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: passwordHash, // 既存のpasswordフィールドを使用
+        school: school || null,
+        university: university || null,
+        grade: grade || null,
+        major: major || null,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        school: true,
+        university: true,
+        grade: true,
+        major: true,
+        createdAt: true,
+      }
+    });
+
+    console.log('✅ User created successfully:', { id: user.id, name, email });
     
     return NextResponse.json({
       success: true,
-      message: 'アカウントが正常に作成されました（モックモード）',
-      user: {
-        id: mockUserId,
-        name,
-        email,
-        university,
-        grade,
-        major,
-        createdAt: new Date().toISOString(),
-      },
-    });
+      message: 'アカウントが正常に作成されました',
+      user,
+    }, { status: 201 });
 
   } catch (error) {
     console.error('Sign up error:', error);

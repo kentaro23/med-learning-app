@@ -11,6 +11,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  school?: string;
   university?: string;
   grade?: string;
   major?: string;
@@ -37,6 +38,7 @@ export default async function ProfilePage() {
       id: true,
       name: true,
       email: true,
+      school: true,
       university: true,
       grade: true,
       major: true,
@@ -87,11 +89,15 @@ export default async function ProfilePage() {
                 <span className="font-medium">{user.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">大学:</span>
-                <span className="font-medium">{user.university || '未設定'}</span>
+                <span className="text-gray-600">学校:</span>
+                <span className="font-medium">{user.school || '未設定'}</span>
               </div>
             </div>
             <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">大学:</span>
+                <span className="font-medium">{user.university || '未設定'}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">学年:</span>
                 <span className="font-medium">{user.grade || '未設定'}</span>
@@ -99,10 +105,6 @@ export default async function ProfilePage() {
               <div className="flex justify-between">
                 <span className="text-gray-600">専攻:</span>
                 <span className="font-medium">{user.major || '未設定'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">プラン:</span>
-                <span className="font-medium">{user.subscriptionType === 'premium' ? 'プレミアム' : '無料'}</span>
               </div>
             </div>
           </div>

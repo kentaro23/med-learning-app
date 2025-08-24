@@ -20,6 +20,7 @@ model User {
   createdAt DateTime @default(now())
   
   // プロフィール情報
+  school     String? // 学校名
   university String? // 大学名
   grade      String? // 学年
   major      String? // 専攻
