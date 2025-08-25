@@ -1,4 +1,23 @@
 import net from "node:net";
+import fs from "node:fs";
+
+// .env.localファイルから環境変数を読み込む
+function loadEnv() {
+  const envPath = ".env.local";
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+      if (match) {
+        process.env[match[1]] = match[2];
+      }
+    }
+  }
+}
+
+// 環境変数を読み込む
+loadEnv();
+
 function parse(u){ try{ const x=new URL(u); return {host:x.hostname, port:Number(x.port||"5432"), raw:u}; } catch { return null; } }
 async function canConnect(host, port, timeoutMs=4000){
   return await new Promise(res=>{
