@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 const signUpSchema = z.object({
   name: z.string().min(2, '名前は2文字以上で入力してください').max(50, '名前は50文字以下で入力してください'),
@@ -64,32 +65,25 @@ export default function SignUpPage() {
         // 新規登録成功後、自動的にログイン
         try {
           console.log('🔄 Attempting auto-login...');
-          const loginResponse = await fetch('/api/auth/signin', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: data.email,
-              password: data.password,
-            }),
+          const result = await signIn('credentials', {
+            email: data.email,
+            password: data.password,
+            redirect: false,
           });
 
-          if (loginResponse.ok) {
-            console.log('✅ Auto-login successful');
-            // ログイン成功、ダッシュボードにリダイレクト
-            setSuccess('ログインに成功しました！ダッシュボードに移動します...');
-            // 即座にリダイレクト（タイムアウトなし）
-            router.push('/dashboard');
-          } else {
+          if (result?.error) {
             console.log('❌ Auto-login failed');
-            const loginErrorData = await loginResponse.json();
-            console.error('Login error details:', loginErrorData);
+            console.error('Login error details:', result.error);
             // ログイン失敗、サインインページにリダイレクト
             setSuccess('アカウントは作成されましたが、自動ログインに失敗しました。手動でログインしてください。');
             setTimeout(() => {
               router.push('/auth/signin');
             }, 3000);
+          } else {
+            console.log('✅ Auto-login successful');
+            // ログイン成功、ダッシュボードにリダイレクト
+            setSuccess('ログインに成功しました！ダッシュボードに移動します...');
+            router.push('/dashboard');
           }
         } catch (loginError) {
           console.error('Auto-login failed:', loginError);

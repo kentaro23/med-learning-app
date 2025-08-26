@@ -3,42 +3,29 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function HomePage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [userName, setUserName] = useState('');
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    // セッションクッキーの存在を確認
-    const checkAuth = () => {
-      const cookies = document.cookie.split(';');
-      const sessionCookie = cookies.find(cookie => 
-        cookie.trim().startsWith('next-auth.session-token=')
-      );
+    if (status === 'loading') return;
 
-      if (!sessionCookie) {
-        console.log('❌ No session cookie found, redirecting to intro');
-        router.push('/intro');
-        return;
-      }
-
-      console.log('✅ Session cookie found, redirecting to dashboard...');
-      
-      // セッションクッキーが存在する場合、ダッシュボードにリダイレクト
+    if (session) {
+      console.log('✅ Session found, redirecting to dashboard...');
       router.push('/dashboard');
-    };
-
-    checkAuth();
-  }, [router]);
+    } else {
+      console.log('❌ No session found, redirecting to intro');
+      router.push('/intro');
+    }
+  }, [session, status, router]);
 
   const handleLogout = () => {
-    // セッションクッキーを削除
-    document.cookie = 'next-auth.session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    router.push('/intro');
+    signOut({ callbackUrl: '/intro' });
   };
 
-  if (isLoading) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -59,7 +46,7 @@ export default function HomePage() {
               Med Memo AI
             </h1>
             <p className="text-gray-600 mt-2">
-              Welcome, {userName}!
+              Welcome, {session?.user?.name || 'User'}!
             </p>
           </div>
           <button

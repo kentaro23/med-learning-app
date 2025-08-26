@@ -7,10 +7,9 @@ const signUpSchema = z.object({
   name: z.string().min(2).max(50),
   email: z.string().email(),
   password: z.string().min(6).max(100),
-  school: z.string().optional(),
-  university: z.string().optional(),
-  grade: z.string().optional(),
-  major: z.string().optional(),
+  university: z.string().min(1, '大学名を入力してください'),
+  grade: z.string().min(1, '学年を選択してください'),
+  major: z.string().min(1, '専攻を入力してください'),
 });
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📋 Request body:', { ...body, password: '[HIDDEN]' });
     
-    const { name, email, password, school, university, grade, major } = signUpSchema.parse(body);
+    const { name, email, password, university, grade, major } = signUpSchema.parse(body);
     console.log('✅ Data validation passed');
 
     // 既存ユーザーの確認
@@ -45,17 +44,15 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
-        password: passwordHash, // 既存のpasswordフィールドを使用
-        school: school || null,
-        university: university || null,
-        grade: grade || null,
-        major: major || null,
+        password: passwordHash,
+        university: university,
+        grade: grade,
+        major: major,
       },
       select: {
         id: true,
         name: true,
         email: true,
-        school: true,
         university: true,
         grade: true,
         major: true,

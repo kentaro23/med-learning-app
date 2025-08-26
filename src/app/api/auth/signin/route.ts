@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
 
 const signInSchema = z.object({
   email: z.string().email(),
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     console.log('🔐 Login attempt:', { email, passwordLength: password.length });
 
     // デモ用アカウントのチェック
-    if (email === 'demo@med.ai' && password === 'password') {
+    if (email === 'demo@med.ai' && password === 'demo1234') {
       console.log('🔑 Demo account credentials match');
       
       const response = NextResponse.json({ 
@@ -39,26 +40,54 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // 新規登録したユーザーの認証（より寛容な条件）
-    console.log('🔑 Authenticating new user:', email);
+    // 新規登録したユーザーの認証（データベースから検索）
+    console.log('🔑 Authenticating registered user:', email);
     
-    // 新規登録したユーザーは、パスワードが入力されていれば認証成功とする
-    if (password && password.trim().length > 0) {
-      console.log('✅ Authentication successful for new user');
-      
-      const mockUser = {
-        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: '新規ユーザー',
-        email: email,
-      };
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
 
+      if (!user) {
+        console.log('❌ User not found:', email);
+        return NextResponse.json(
+          { error: 'ユーザーが見つかりません' },
+          { status: 401 }
+        );
+      }
+
+      // パスワードの検証
+      if (user.password) {
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+          console.log('❌ Invalid password for user:', email);
+          return NextResponse.json(
+            { error: 'パスワードが正しくありません' },
+            { status: 401 }
+          );
+        }
+      } else {
+        // パスワードフィールドがない場合（NextAuth.jsのOAuthユーザーなど）
+        console.log('❌ No password field for user:', email);
+        return NextResponse.json(
+          { error: 'このアカウントではパスワード認証が利用できません' },
+          { status: 401 }
+        );
+      }
+
+      console.log('✅ Authentication successful for registered user:', email);
+      
       const response = NextResponse.json({ 
         success: true,
-        user: mockUser
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        }
       });
 
       // セッションクッキーを設定
-      response.cookies.set('next-auth.session-token', `user-session-${mockUser.id}`, {
+      response.cookies.set('next-auth.session-token', `user-session-${user.id}`, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -67,11 +96,11 @@ export async function POST(request: NextRequest) {
       });
 
       return response;
-    } else {
-      console.log('❌ No password provided');
+    } catch (dbError) {
+      console.error('❌ Database error during authentication:', dbError);
       return NextResponse.json(
-        { error: 'パスワードを入力してください' },
-        { status: 401 }
+        { error: '認証処理中にエラーが発生しました' },
+        { status: 500 }
       );
     }
 

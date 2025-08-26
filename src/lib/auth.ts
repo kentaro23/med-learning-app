@@ -29,8 +29,16 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // パスワード検証（実際の実装ではbcryptを使用）
-        if (credentials.password === "password") {
+        // パスワード検証（bcryptを使用）
+        if (user.password) {
+          const isValidPassword = await bcrypt.compare(credentials.password, user.password);
+          if (isValidPassword) {
+            return user;
+          }
+        }
+        
+        // デモアカウントの特別処理
+        if (credentials.email === "demo@med.ai" && credentials.password === "demo1234") {
           return user;
         }
 

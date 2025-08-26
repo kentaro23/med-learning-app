@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 const signInSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
@@ -32,25 +33,20 @@ export default function SignInPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+      const result = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        console.log('✅ Login successful:', result.user);
-        // ログイン成功後、ダッシュボードページに直接リダイレクト
-        console.log('🔄 Redirecting to dashboard...');
-        // 強制的にページを更新してダッシュボードに移動
-        window.location.href = '/dashboard';
-      } else {
+      if (result?.error) {
         console.error('❌ Login failed:', result.error);
-        setError(result.error || 'ログインに失敗しました');
+        setError('ログインに失敗しました。メールアドレスとパスワードを確認してください。');
+      } else {
+        console.log('✅ Login successful');
+        // ログイン成功後、ダッシュボードページにリダイレクト
+        console.log('🔄 Redirecting to dashboard...');
+        router.push('/dashboard');
       }
     } catch (err) {
       console.error('❌ Login error:', err);
