@@ -24,9 +24,12 @@ export async function POST(request: NextRequest) {
     const { name, email, password, university, grade, major } = signUpSchema.parse(body);
     console.log('✅ Data validation passed');
 
+    // メールアドレスの正規化
+    const e = String(email).toLowerCase().trim();
+
     // 既存ユーザーの確認
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: e }
     });
 
     if (existingUser) {
@@ -43,8 +46,8 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
-        password: passwordHash,
+        email: e,
+        passwordHash: passwordHash,
         university: university,
         grade: grade,
         major: major,

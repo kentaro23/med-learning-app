@@ -15,7 +15,7 @@ async function main() {
     create: {
       email: 'demo@med.ai',
       name: 'テストユーザー',
-      password: hashedPassword,
+      passwordHash: hashedPassword,
       university: '東京医科大学',
       major: '医学部',
       grade: '3年生',
