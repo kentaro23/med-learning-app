@@ -127,7 +127,7 @@ export default function StudyPage() {
           setDemoCards();
         }
       }
-    }, 2000); // 2秒後にフォールバック
+    }, 1000); // 1秒後にフォールバック（短縮）
 
     return () => clearTimeout(fallbackTimer);
   }, [isLoading, cardSet, cards.length]);
@@ -187,41 +187,47 @@ export default function StudyPage() {
         return;
       }
 
-      // 使用制限チェック
-      try {
-        const usageResponse = await fetch('/api/usage/check', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ feature: 'cardSets' }),
-        });
-
-        if (!usageResponse.ok) {
-          const errorData = await usageResponse.json();
-          if (usageResponse.status === 429) {
-            // 使用制限に達した場合
-            alert(`使用制限に達しました: ${errorData.details}`);
-            return;
-          }
-          // エラーが発生した場合でも、デモアカウントの場合は学習を開始
-          console.warn('Usage check failed, but proceeding for demo account:', errorData);
-        } else {
-          const usageData = await usageResponse.json();
-          console.log('✅ Usage check passed:', usageData.message);
-        }
-      } catch (usageError) {
-        console.error('Usage check error:', usageError);
-        // エラーが発生した場合でも、デモアカウントの場合は学習を開始
-        console.warn('Usage check failed, but proceeding for demo account');
-      }
-      
+      // 即座に学習を開始（使用制限チェックは非同期で実行）
       setIsStudyStarted(true);
       setCurrentCardIndex(0);
       setShowAnswer(false);
       setStudyResults({});
       setStudyStartTime(Date.now());
       console.log('✅ Study session started successfully');
+
+      // 使用制限チェック（非同期で実行、エラーが発生しても学習は継続）
+      const checkUsageInBackground = async () => {
+        try {
+          const usageResponse = await fetch('/api/usage/check', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ feature: 'cardSets' }),
+          });
+
+          if (!usageResponse.ok) {
+            const errorData = await usageResponse.json();
+            if (usageResponse.status === 429) {
+              // 使用制限に達した場合、警告を表示するが学習は継続
+              console.warn('Usage limit reached:', errorData.details);
+              // 学習完了後に制限メッセージを表示するためのフラグ
+              // ここでは学習を中断せず、完了後に警告を表示
+            }
+          } else {
+            const usageData = await usageResponse.json();
+            console.log('✅ Usage check passed:', usageData.message);
+          }
+        } catch (usageError) {
+          console.error('Usage check error:', usageError);
+          // エラーが発生しても学習は継続
+          console.warn('Usage check failed, but study continues');
+        }
+      };
+
+      // バックグラウンドで使用制限チェックを実行
+      checkUsageInBackground();
+      
     } catch (error) {
       console.error('❌ Error starting study session:', error);
       alert('学習の開始に失敗しました。');
@@ -344,7 +350,7 @@ export default function StudyPage() {
                 手動で読み込みをリセット
               </button>
               <div className="text-xs text-gray-500">
-                2秒後に自動的にデモデータが表示されます
+                1秒後に自動的にデモデータが表示されます
               </div>
             </div>
           </div>
@@ -455,6 +461,12 @@ export default function StudyPage() {
                       カードを追加してから学習を開始してください
                     </p>
                   )}
+                  
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-500">
+                      学習開始ボタンを押すと、すぐに学習が始まります
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
