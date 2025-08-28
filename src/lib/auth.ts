@@ -1,9 +1,13 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
-import { sendWelcomeEmail } from "@/server/email";
+
+// 管理者メールアドレスの設定
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
+  .split(',')
+  .map(e => e.toLowerCase().trim())
+  .filter(Boolean);
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development',
@@ -65,7 +69,8 @@ export const authOptions: NextAuthOptions = {
           return { 
             id: user.id, 
             email: user.email, 
-            name: user.name 
+            name: user.name,
+            isAdmin: user.isAdmin
           };
         } catch (error) {
           console.error('❌ Authorization error:', error);
@@ -84,6 +89,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        (token as any).isAdmin = (user as any).isAdmin ?? false;
       }
       return token;
     },
@@ -92,9 +98,25 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id as string;
         (session.user as any).email = token.email as string;
         (session.user as any).name = token.name as string;
+        (session.user as any).isAdmin = Boolean((token as any)?.isAdmin);
       }
       return session;
     }
+  },
+  events: {
+    async createUser({ user }) {
+      try {
+        const email = user.email?.toLowerCase() || '';
+        if (email && ADMIN_EMAILS.includes(email)) {
+          await prisma.user.update({ 
+            where: { id: user.id }, 
+            data: { isAdmin: true } 
+          });
+        }
+      } catch (error) {
+        console.error('Failed to set admin flag:', error);
+      }
+    },
   },
   debug: process.env.NODE_ENV === 'development',
   pages: {

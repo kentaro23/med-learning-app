@@ -13,17 +13,30 @@ model User {
   name                  String?
   email                 String?        @unique
   image                 String?
-  createdAt             DateTime       @default(now())
+  
+  // 管理者権限
+  isAdmin               Boolean        @default(false)
+  
+  // サブスクリプション情報
+  plan                  Plan           @default(FREE)
+  subscriptionStatus    SubscriptionStatus @default(NONE)
+  subscriptionExpiresAt DateTime?
+  
+  // プロフィール情報
   university            String?
   grade                 String?
   major                 String?
-  subscriptionType      String         @default("free")
-  subscriptionExpiresAt DateTime?
   school                String?
   passwordHash          String?
+  
+  // 使用制限の追跡
+  dailyUsage            DailyUsage?
+  
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  
   bookmarks             Bookmark[]
   cardSets              CardSet[]
-  dailyUsage            DailyUsage?
   docs                  Doc[]
   likes                 Like[]
   sessions              StudySession[]
@@ -113,6 +126,18 @@ model Bookmark {
   user      User    @relation(fields: [userId], references: [id])
 
   @@unique([userId, cardSetId])
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  NONE
+  ACTIVE
+  CANCELED
+  PAST_DUE
 }
 
 /// PDF資料本体と穴埋め（Cloze）情報
