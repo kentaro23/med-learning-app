@@ -46,7 +46,6 @@ export default function SignInPage() {
 
     try {
       console.log('🚀 Attempting login for:', data.email);
-      console.log('🔧 Using credentials provider...');
       
       const result = await signIn('credentials', {
         email: data.email,
@@ -55,18 +54,29 @@ export default function SignInPage() {
       });
 
       console.log('📊 SignIn result:', result);
-      console.log('📊 Result type:', typeof result);
-      console.log('📊 Result keys:', result ? Object.keys(result) : 'null');
 
       if (result?.error) {
         console.error('❌ Login failed:', result.error);
         setError(`ログインエラー: ${result.error}`);
       } else if (result?.ok) {
         console.log('✅ Login successful, redirecting to dashboard...');
-        router.push('/dashboard');
+        // 少し待ってからリダイレクト
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 500);
       } else {
-        console.log('⚠️ Login result unclear');
-        setError('ログインの結果が不明です。再度お試しください。');
+        console.log('⚠️ Login result unclear, checking session...');
+        // セッションを確認
+        const sessionResponse = await fetch('/api/auth/session');
+        const sessionData = await sessionResponse.json();
+        console.log('🔍 Session data:', sessionData);
+        
+        if (sessionData.user) {
+          console.log('✅ User session found, redirecting to dashboard...');
+          router.push('/dashboard');
+        } else {
+          setError('ログインに失敗しました。再度お試しください。');
+        }
       }
     } catch (err) {
       console.error('❌ Login error:', err);

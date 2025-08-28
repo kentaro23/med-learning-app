@@ -6,7 +6,6 @@ import bcrypt from "bcryptjs";
 import { sendWelcomeEmail } from "@/server/email";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development',
   providers: [
     CredentialsProvider({
@@ -18,10 +17,6 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           console.log('🔐 Authorization attempt for:', credentials?.email);
-          console.log('🔐 Credentials received:', { 
-            email: credentials?.email, 
-            hasPassword: !!credentials?.password 
-          });
           
           if (!credentials?.email || !credentials?.password) {
             console.log('❌ Missing credentials');
@@ -29,24 +24,25 @@ export const authOptions: NextAuthOptions = {
           }
           
           const email = String(credentials.email).toLowerCase().trim();
-          console.log('🔍 Looking for user with email:', email);
+          console.log('🔍 Processing email:', email);
           
           // デモアカウントの特別処理
           if (email === 'demo@med.ai' && credentials.password === 'demo1234') {
             console.log('🎭 Demo account authentication successful');
-            const demoUser = {
+            return {
               id: 'demo-user-123',
               email: 'demo@med.ai',
               name: 'デモユーザー'
             };
-            console.log('🎭 Demo user object:', demoUser);
-            return demoUser;
           }
           
-          console.log('🔍 Not a demo account, checking database...');
+          console.log('🔍 Checking database for user:', email);
           
           // 通常のユーザー認証
-          const user = await prisma.user.findUnique({ where: { email } });
+          const user = await prisma.user.findUnique({ 
+            where: { email },
+            select: { id: true, email: true, name: true, passwordHash: true }
+          });
           
           if (!user) {
             console.log('❌ User not found:', email);
@@ -67,48 +63,41 @@ export const authOptions: NextAuthOptions = {
           }
           
           console.log('✅ Authorization successful for user:', email);
-          return { id: user.id, email: user.email, name: user.name ?? null };
+          return { 
+            id: user.id, 
+            email: user.email, 
+            name: user.name 
+          };
         } catch (error) {
           console.error('❌ Authorization error:', error);
-          console.error('❌ Error details:', {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
-          });
           return null;
         }
       },
     }),
   ],
   session: {
-    strategy: "jwt"
-  },
-  pages: {
-    signIn: "/auth/signin",
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }: { token: any; user: any }) {
-      // Persist user id on token
+    async jwt({ token, user }) {
       if (user) {
-        (token as any).uid = (user as any).id;
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
-      if (session?.user && (token as any)?.uid) {
-        (session.user as any).id = (token as any).uid as string;
+    async session({ session, token }) {
+      if (token && session.user) {
+        (session.user as any).id = token.id as string;
+        (session.user as any).email = token.email as string;
+        (session.user as any).name = token.name as string;
       }
       return session;
     }
   },
-  events: {
-    async createUser({ user }: { user: any }) {
-      try {
-        await sendWelcomeEmail({ email: user.email!, name: user.name || undefined });
-      } catch (error) {
-        console.error('Welcome email failed:', error);
-      }
-    }
-  }
+  debug: process.env.NODE_ENV === 'development',
 };
 
 export async function getSession() {
