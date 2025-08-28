@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 
 const signInSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
@@ -19,6 +19,15 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  // セッションが存在する場合はダッシュボードにリダイレクト
+  useEffect(() => {
+    if (session && status === 'authenticated') {
+      console.log('✅ Session detected, redirecting to dashboard...');
+      router.push('/dashboard');
+    }
+  }, [session, status, router]);
 
   const {
     register,
@@ -33,20 +42,46 @@ export default function SignInPage() {
     setError('');
 
     try {
+      console.log('🚀 Attempting login for:', data.email);
+      
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
         redirect: false,
       });
 
+      console.log('📊 SignIn result:', result);
+
       if (result?.error) {
         console.error('❌ Login failed:', result.error);
         setError('メールアドレスまたはパスワードが正しくありません。');
-      } else {
-        console.log('✅ Login successful');
+      } else if (result?.ok) {
+        console.log('✅ Login successful, redirecting to dashboard...');
         // ログイン成功後、ダッシュボードページにリダイレクト
-        console.log('🔄 Redirecting to dashboard...');
         router.push('/dashboard');
+      } else {
+        console.log('⚠️ Login result unclear, checking session...');
+        // セッションの状態を確認してからリダイレクト
+        const checkSession = async () => {
+          try {
+            const response = await fetch('/api/auth/session');
+            const sessionData = await response.json();
+            console.log('🔍 Session check result:', sessionData);
+            
+            if (sessionData.user) {
+              console.log('✅ User session found, redirecting to dashboard...');
+              router.push('/dashboard');
+            } else {
+              console.log('❌ No user session found');
+              setError('ログインに失敗しました。再度お試しください。');
+            }
+          } catch (error) {
+            console.error('❌ Session check failed:', error);
+            setError('セッションの確認に失敗しました。再度お試しください。');
+          }
+        };
+        
+        checkSession();
       }
     } catch (err) {
       console.error('❌ Login error:', err);
@@ -113,6 +148,21 @@ export default function SignInPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* デバッグ情報（開発環境のみ） */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-xs text-gray-600 mb-2">
+                  <strong>デバッグ情報:</strong>
+                </p>
+                <p className="text-xs text-gray-500">
+                  セッション状態: {status}
+                </p>
+                <p className="text-xs text-gray-500">
+                  ユーザー: {session?.user?.email || 'なし'}
+                </p>
               </div>
             )}
 
