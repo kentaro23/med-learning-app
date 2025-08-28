@@ -41,7 +41,7 @@ export default function SignInPage() {
 
       if (result?.error) {
         console.error('❌ Login failed:', result.error);
-        setError('ログインに失敗しました。メールアドレスとパスワードを確認してください。');
+        setError('メールアドレスまたはパスワードが正しくありません。');
       } else {
         console.log('✅ Login successful');
         // ログイン成功後、ダッシュボードページにリダイレクト
@@ -148,11 +148,24 @@ export default function SignInPage() {
 
           {/* デモ用情報 */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+            <p className="text-sm text-blue-800 mb-3">
               <strong>デモ用アカウント:</strong><br />
               メール: demo@med.ai<br />
               パスワード: demo1234
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                const demoEmail = 'demo@med.ai';
+                const demoPassword = 'demo1234';
+                console.log('🧪 Testing demo login:', demoEmail);
+                onSubmit({ email: demoEmail, password: demoPassword });
+              }}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              デモアカウントでログイン
+            </button>
           </div>
         </div>
       </div>
