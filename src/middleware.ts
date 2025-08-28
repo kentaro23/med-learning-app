@@ -10,8 +10,9 @@ const publicRoutes = ['/intro', '/auth/signin', '/auth/signup'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // セッションクッキーの存在を確認
-  const sessionCookie = request.cookies.get('next-auth.session-token');
+  // 本番環境とローカル環境で異なるクッキー名を使用
+  const sessionCookie = request.cookies.get('next-auth.session-token') || 
+                       request.cookies.get('__Secure-next-auth.session-token');
   const isAuthenticated = !!sessionCookie;
 
   console.log('🔒 Middleware:', { 
