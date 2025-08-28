@@ -18,6 +18,10 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           console.log('🔐 Authorization attempt for:', credentials?.email);
+          console.log('🔐 Credentials received:', { 
+            email: credentials?.email, 
+            hasPassword: !!credentials?.password 
+          });
           
           if (!credentials?.email || !credentials?.password) {
             console.log('❌ Missing credentials');
@@ -30,12 +34,16 @@ export const authOptions: NextAuthOptions = {
           // デモアカウントの特別処理
           if (email === 'demo@med.ai' && credentials.password === 'demo1234') {
             console.log('🎭 Demo account authentication successful');
-            return {
+            const demoUser = {
               id: 'demo-user-123',
               email: 'demo@med.ai',
               name: 'デモユーザー'
             };
+            console.log('🎭 Demo user object:', demoUser);
+            return demoUser;
           }
+          
+          console.log('🔍 Not a demo account, checking database...');
           
           // 通常のユーザー認証
           const user = await prisma.user.findUnique({ where: { email } });
@@ -62,6 +70,10 @@ export const authOptions: NextAuthOptions = {
           return { id: user.id, email: user.email, name: user.name ?? null };
         } catch (error) {
           console.error('❌ Authorization error:', error);
+          console.error('❌ Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          });
           return null;
         }
       },
