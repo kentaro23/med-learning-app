@@ -21,12 +21,15 @@ export default function SignInPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  // セッションが存在する場合はダッシュボードにリダイレクト
+  // セッションが存在する場合はダッシュボードにリダイレクト（一時的に無効化）
   useEffect(() => {
-    if (session && status === 'authenticated') {
-      console.log('✅ Session detected, redirecting to dashboard...');
-      router.push('/dashboard');
-    }
+    // 無限リダイレクトループを防ぐため、一時的に無効化
+    // if (session && status === 'authenticated') {
+    //   console.log('✅ Session detected, redirecting to dashboard...');
+    //   router.push('/dashboard');
+    // }
+    console.log('🔍 Current session status:', status);
+    console.log('🔍 Current session data:', session);
   }, [session, status, router]);
 
   const {
@@ -62,30 +65,8 @@ export default function SignInPage() {
         console.log('✅ Login successful, redirecting to dashboard...');
         router.push('/dashboard');
       } else {
-        console.log('⚠️ Login result unclear, checking session...');
-        // セッションの状態を確認してからリダイレクト
-        const checkSession = async () => {
-          try {
-            console.log('🔍 Checking session via API...');
-            const response = await fetch('/api/auth/session');
-            console.log('🔍 Response status:', response.status);
-            const sessionData = await response.json();
-            console.log('🔍 Session check result:', sessionData);
-            
-            if (sessionData.user) {
-              console.log('✅ User session found, redirecting to dashboard...');
-              router.push('/dashboard');
-            } else {
-              console.log('❌ No user session found');
-              setError('ログインに失敗しました。再度お試しください。');
-            }
-          } catch (error) {
-            console.error('❌ Session check failed:', error);
-            setError('セッションの確認に失敗しました。再度お試しください。');
-          }
-        };
-        
-        checkSession();
+        console.log('⚠️ Login result unclear');
+        setError('ログインの結果が不明です。再度お試しください。');
       }
     } catch (err) {
       console.error('❌ Login error:', err);
@@ -209,16 +190,43 @@ export default function SignInPage() {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setError('');
-                const demoEmail = 'demo@med.ai';
-                const demoPassword = 'demo1234';
-                console.log('🧪 Testing demo login:', demoEmail);
-                onSubmit({ email: demoEmail, password: demoPassword });
+              onClick={async () => {
+                try {
+                  setError('');
+                  setIsLoading(true);
+                  const demoEmail = 'demo@med.ai';
+                  const demoPassword = 'demo1234';
+                  console.log('🧪 Testing demo login:', demoEmail);
+                  
+                  const result = await signIn('credentials', {
+                    email: demoEmail,
+                    password: demoPassword,
+                    redirect: false,
+                  });
+                  
+                  console.log('🧪 Demo login result:', result);
+                  
+                  if (result?.error) {
+                    console.error('❌ Demo login failed:', result.error);
+                    setError(`デモログインエラー: ${result.error}`);
+                  } else if (result?.ok) {
+                    console.log('✅ Demo login successful, redirecting to dashboard...');
+                    router.push('/dashboard');
+                  } else {
+                    console.log('⚠️ Demo login result unclear');
+                    setError('デモログインの結果が不明です。再度お試しください。');
+                  }
+                } catch (error) {
+                  console.error('❌ Demo login error:', error);
+                  setError(`デモログインエラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
+                } finally {
+                  setIsLoading(false);
+                }
               }}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm font-medium"
             >
-              デモアカウントでログイン
+              {isLoading ? 'ログイン中...' : 'デモアカウントでログイン'}
             </button>
           </div>
         </div>
