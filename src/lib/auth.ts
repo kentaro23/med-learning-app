@@ -27,6 +27,17 @@ export const authOptions: NextAuthOptions = {
           const email = String(credentials.email).toLowerCase().trim();
           console.log('🔍 Looking for user with email:', email);
           
+          // デモアカウントの特別処理
+          if (email === 'demo@med.ai' && credentials.password === 'demo1234') {
+            console.log('🎭 Demo account authentication successful');
+            return {
+              id: 'demo-user-123',
+              email: 'demo@med.ai',
+              name: 'デモユーザー'
+            };
+          }
+          
+          // 通常のユーザー認証
           const user = await prisma.user.findUnique({ where: { email } });
           
           if (!user) {

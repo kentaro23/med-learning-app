@@ -1,5 +1,7 @@
-import net from "node:net";
 import fs from "node:fs";
+import dotenv from "dotenv";
+dotenv.config({ path: fs.existsSync(".env.local") ? ".env.local" : ".env" });
+import net from "node:net";
 
 // .env.localファイルから環境変数を読み込む
 function loadEnv() {
