@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { prisma, safePrismaOperation, checkDatabaseConnection } from '@/lib/prisma';
 import Link from 'next/link';
 import Navigation from '../../components/Navigation';
 
@@ -48,31 +48,41 @@ interface UsageLimits {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect('/auth/signin');
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) redirect('/auth/signin');
 
-  // サーバーサイドでユーザー情報と統計を取得
-  const user = await prisma.user.findUnique({
-    where: { id: (session.user as any).id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      university: true,
-      grade: true,
-      major: true,
-      subscriptionType: true,
-      subscriptionExpiresAt: true,
-      _count: {
-        select: {
-          cardSets: true,
-          docs: true,
-        }
-      }
+    // データベース接続をチェック
+    const isConnected = await checkDatabaseConnection();
+    if (!isConnected) {
+      console.error('Database connection failed');
+      redirect('/auth/signin');
     }
-  });
 
-  if (!user) redirect('/auth/signin');
+    // サーバーサイドでユーザー情報と統計を取得
+    const user = await safePrismaOperation(() =>
+      prisma.user.findUnique({
+        where: { id: (session.user as any).id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          university: true,
+          grade: true,
+          major: true,
+          subscriptionType: true,
+          subscriptionExpiresAt: true,
+          _count: {
+            select: {
+              cardSets: true,
+              docs: true,
+            }
+          }
+        }
+      })
+    );
+
+    if (!user) redirect('/auth/signin');
 
   // ユーザーのカードセットを取得
   const myCardSets = await prisma.cardSet.findMany({
@@ -272,4 +282,9 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    // エラーが発生した場合はログインページにリダイレクト
+    redirect('/auth/signin');
+  }
 }
