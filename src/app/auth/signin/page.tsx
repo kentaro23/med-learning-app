@@ -21,15 +21,11 @@ export default function SignInPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  // セッションが存在する場合はダッシュボードにリダイレクト（一時的に無効化）
+  // セッションが存在する場合の処理を完全に無効化
   useEffect(() => {
-    // 無限リダイレクトループを防ぐため、一時的に無効化
-    // if (session && status === 'authenticated') {
-    //   console.log('✅ Session detected, redirecting to dashboard...');
-    //   router.push('/dashboard');
-    // }
     console.log('🔍 Current session status:', status);
     console.log('🔍 Current session data:', session);
+    // 無限リダイレクトループを防ぐため、自動リダイレクトを完全に無効化
   }, [session, status, router]);
 
   const {
@@ -60,23 +56,11 @@ export default function SignInPage() {
         setError(`ログインエラー: ${result.error}`);
       } else if (result?.ok) {
         console.log('✅ Login successful, redirecting to dashboard...');
-        // 少し待ってからリダイレクト
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 500);
+        // 直接リダイレクト（タイムアウトなし）
+        router.push('/dashboard');
       } else {
-        console.log('⚠️ Login result unclear, checking session...');
-        // セッションを確認
-        const sessionResponse = await fetch('/api/auth/session');
-        const sessionData = await sessionResponse.json();
-        console.log('🔍 Session data:', sessionData);
-        
-        if (sessionData.user) {
-          console.log('✅ User session found, redirecting to dashboard...');
-          router.push('/dashboard');
-        } else {
-          setError('ログインに失敗しました。再度お試しください。');
-        }
+        console.log('⚠️ Login result unclear');
+        setError('ログインの結果が不明です。再度お試しください。');
       }
     } catch (err) {
       console.error('❌ Login error:', err);

@@ -97,6 +97,10 @@ export const authOptions: NextAuthOptions = {
     }
   },
   debug: process.env.NODE_ENV === 'development',
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/signin',
+  },
 };
 
 export async function getSession() {
