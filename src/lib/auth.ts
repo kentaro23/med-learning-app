@@ -40,8 +40,7 @@ export const authOptions: NextAuthOptions = {
           
           // 通常のユーザー認証
           const user = await prisma.user.findUnique({ 
-            where: { email },
-            select: { id: true, email: true, name: true, passwordHash: true }
+            where: { email }
           });
           
           if (!user) {

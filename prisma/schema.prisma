@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,111 +9,99 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String?  @unique
-  passwordHash String?  // for Credentials login
-  image     String?
-  createdAt DateTime @default(now())
-  
-  // プロフィール情報
-  school     String? // 学校名
-  university String? // 大学名
-  grade      String? // 学年
-  major      String? // 専攻
-  
-  // サブスクリプション情報
-  subscriptionType String @default("free") // "free" | "premium"
+  id                    String         @id @default(cuid())
+  name                  String?
+  email                 String?        @unique
+  image                 String?
+  createdAt             DateTime       @default(now())
+  university            String?
+  grade                 String?
+  major                 String?
+  subscriptionType      String         @default("free")
   subscriptionExpiresAt DateTime?
-  
-  // 使用制限の追跡
-  dailyUsage DailyUsage?
-  
-  cardSets  CardSet[]
-  sessions  StudySession[]
-  likes     Like[]
-  bookmarks Bookmark[]
-  docs      Doc[]
+  school                String?
+  passwordHash          String?
+  bookmarks             Bookmark[]
+  cardSets              CardSet[]
+  dailyUsage            DailyUsage?
+  docs                  Doc[]
+  likes                 Like[]
+  sessions              StudySession[]
 }
 
-// 日次使用制限の追跡
 model DailyUsage {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  date      DateTime @default(now())
-  
-  // 使用回数
-  aiQuestionsGenerated Int @default(0)  // AI問題生成回数
-  cardSetsStudied      Int @default(0)  // 単語帳演習回数
-  pdfsProcessed        Int @default(0)  // PDF処理回数
-  
-  // 制限値
-  aiQuestionsLimit     Int @default(5)  // 無料: 5回, プレミアム: 無制限
-  cardSetsLimit        Int @default(2)  // 無料: 2回, プレミアム: 無制限
-  pdfsLimit            Int @default(1)  // 無料: 1回, プレミアム: 無制限
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  date                 DateTime @default(now())
+  aiQuestionsGenerated Int      @default(0)
+  cardSetsStudied      Int      @default(0)
+  pdfsProcessed        Int      @default(0)
+  aiQuestionsLimit     Int      @default(5)
+  cardSetsLimit        Int      @default(2)
+  pdfsLimit            Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id])
 }
 
 model CardSet {
-  id          String    @id @default(cuid())
+  id          String         @id @default(cuid())
   ownerId     String
-  owner       User      @relation(fields: [ownerId], references: [id])
   title       String
   description String?
-  visibility  String    @default("private") // private | unlisted | public
-  tags        String    @default("") // SQLiteでは配列をサポートしないため、カンマ区切り文字列
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  cards       Card[]
-  sessions    StudySession[]
-  likes       Like[]
+  visibility  String         @default("private")
+  tags        String         @default("")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   bookmarks   Bookmark[]
+  cards       Card[]
+  owner       User           @relation(fields: [ownerId], references: [id])
+  likes       Like[]
+  sessions    StudySession[]
 }
 
 model Card {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   cardSetId String
-  cardSet   CardSet  @relation(fields: [cardSetId], references: [id])
   question  String
   answer    String
   source    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
   logs      AnswerLog[]
+  cardSet   CardSet     @relation(fields: [cardSetId], references: [id])
 
   @@index([cardSetId])
 }
 
 model StudySession {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   cardSetId String
-  cardSet   CardSet  @relation(fields: [cardSetId], references: [id])
-  startedAt DateTime @default(now())
+  startedAt DateTime    @default(now())
   endedAt   DateTime?
   logs      AnswerLog[]
+  cardSet   CardSet     @relation(fields: [cardSetId], references: [id])
+  user      User        @relation(fields: [userId], references: [id])
 }
 
 model AnswerLog {
-  id        String       @id @default(cuid())
-  sessionId String
-  session   StudySession @relation(fields: [sessionId], references: [id])
-  cardId    String
-  card      Card         @relation(fields: [cardId], references: [id])
-  isCorrect Boolean
-  answeredAt DateTime    @default(now())
+  id         String       @id @default(cuid())
+  sessionId  String
+  cardId     String
+  isCorrect  Boolean
+  answeredAt DateTime     @default(now())
+  card       Card         @relation(fields: [cardId], references: [id])
+  session    StudySession @relation(fields: [sessionId], references: [id])
 }
 
 model Like {
   id        String  @id @default(cuid())
   userId    String
   cardSetId String
-  user      User    @relation(fields: [userId], references: [id])
   cardSet   CardSet @relation(fields: [cardSetId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
   @@unique([userId, cardSetId])
 }
 
@@ -124,33 +109,34 @@ model Bookmark {
   id        String  @id @default(cuid())
   userId    String
   cardSetId String
-  user      User    @relation(fields: [userId], references: [id])
   cardSet   CardSet @relation(fields: [cardSetId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
   @@unique([userId, cardSetId])
 }
 
 /// PDF資料本体と穴埋め（Cloze）情報
 model Doc {
-  id          String   @id @default(cuid())
-  ownerId     String
-  owner       User     @relation(fields: [ownerId], references: [id])
-  title       String
-  visibility  String   @default("private") // private | unlisted | public
-  sourceName  String?  // アップロード元ファイル名
-  textHash    String   // 抽出テキストのハッシュ（改ざん検出用）
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  ownerId    String
+  title      String
+  visibility String   @default("private")
+  sourceName String?
+  textHash   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
   clozes     Cloze[]
+  owner      User     @relation(fields: [ownerId], references: [id])
 }
 
 model Cloze {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   docId     String
-  doc       Doc     @relation(fields: [docId], references: [id])
   /// 原文の一部を[[blank]]で囲んだテキスト（マークダウン風）
   content   String
   /// AI自動提案のブランク数などのメタ
   meta      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  doc       Doc      @relation(fields: [docId], references: [id])
 }
