@@ -279,6 +279,20 @@ export default async function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* 管理者パネル */}
+        <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl shadow-lg p-6 border border-red-200">
+          <h2 className="text-xl font-semibold text-red-900 mb-4">🔧 管理者パネル</h2>
+          <p className="text-red-700 mb-4">
+            kentaro20040623@gmail.com でログインしている場合、管理者機能にアクセスできます。
+          </p>
+          <Link
+            href="/admin"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+          >
+            管理者ダッシュボード →
+          </Link>
+        </div>
       </div>
     </div>
   );

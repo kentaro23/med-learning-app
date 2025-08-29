@@ -13,17 +13,32 @@ model User {
   name                  String?
   email                 String?        @unique
   image                 String?
-  createdAt             DateTime       @default(now())
+  
+  // 管理者権限
+  isAdmin               Boolean        @default(false)
+  
+  // サブスクリプション情報
+  subscriptionType      String         @default("free")
+  subscriptionExpiresAt DateTime?
+  
+  // プロフィール情報
   university            String?
   grade                 String?
   major                 String?
-  subscriptionType      String         @default("free")
-  subscriptionExpiresAt DateTime?
   school                String?
   passwordHash          String?
+  
+  // ログイン履歴
+  lastLoginAt           DateTime?
+  
+  // 使用制限の追跡
+  dailyUsage            DailyUsage?
+  
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  
   bookmarks             Bookmark[]
   cardSets              CardSet[]
-  dailyUsage            DailyUsage?
   docs                  Doc[]
   likes                 Like[]
   sessions              StudySession[]
