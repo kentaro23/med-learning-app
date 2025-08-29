@@ -1,43 +1,123 @@
-import fs from "node:fs";
-import dotenv from "dotenv";
-dotenv.config({ path: fs.existsSync(".env.local") ? ".env.local" : ".env" });
-import net from "node:net";
+#!/usr/bin/env node
 
-// .env.localファイルから環境変数を読み込む
-function loadEnv() {
-  const envPath = ".env.local";
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, "utf8");
-    for (const line of content.split(/\r?\n/)) {
-      const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
-      if (match) {
-        process.env[match[1]] = match[2];
-      }
-    }
+/**
+ * データベース接続チェックスクリプト
+ * ビルド前にデータベース接続を確認
+ */
+
+import { PrismaClient } from '@prisma/client';
+import net from 'node:net';
+
+console.log('🔍 Database Connection Check');
+console.log('============================\n');
+
+// 環境変数の確認
+const dbUrl = process.env.DATABASE_URL;
+const directUrl = process.env.DIRECT_URL;
+
+if (!dbUrl || !directUrl) {
+  console.error('❌ DATABASE_URL or DIRECT_URL is missing');
+  console.error('Please check your environment variables');
+  process.exit(1);
+}
+
+// 接続情報の解析
+function parseConnectionInfo(url) {
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port) || 5432,
+      database: parsed.pathname.slice(1),
+      ssl: parsed.searchParams.get('sslmode') === 'require',
+      pgbouncer: parsed.searchParams.get('pgbouncer') === 'true'
+    };
+  } catch (error) {
+    console.error('❌ Invalid URL format:', url);
+    return null;
   }
 }
 
-// 環境変数を読み込む
-loadEnv();
+const dbInfo = parseConnectionInfo(dbUrl);
+const directInfo = parseConnectionInfo(directUrl);
 
-function parse(u){ try{ const x=new URL(u); return {host:x.hostname, port:Number(x.port||"5432"), raw:u}; } catch { return null; } }
-async function canConnect(host, port, timeoutMs=4000){
-  return await new Promise(res=>{
-    const s = net.createConnection({host, port, timeout: timeoutMs}, ()=>{ s.destroy(); res(true); });
-    s.on("error", ()=>{ res(false); });
-    s.on("timeout", ()=>{ s.destroy(); res(false); });
+if (!dbInfo || !directInfo) {
+  console.error('❌ Failed to parse connection URLs');
+  process.exit(1);
+}
+
+console.log('📊 Connection Information:');
+console.log('DATABASE_URL:', `${dbInfo.host}:${dbInfo.port} (${dbInfo.pgbouncer ? 'PgBouncer' : 'Direct'})`);
+console.log('DIRECT_URL:', `${directInfo.host}:${directInfo.port} (Direct)`);
+console.log('');
+
+// 接続テスト
+async function testConnection(host, port, timeout = 5000) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host, port, timeout }, () => {
+      socket.destroy();
+      resolve(true);
+    });
+    
+    socket.on('error', () => resolve(false));
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
   });
 }
-function log(o){ console.log(JSON.stringify(o)); }
-const db = parse(process.env.DATABASE_URL||"");
-const direct = parse(process.env.DIRECT_URL||"");
-log({HAS_DB:!!db, DB: db && {host:db.host, port:db.port}, HAS_DIRECT:!!direct, DIRECT: direct && {host:direct.host, port:direct.port}});
-if(!db || !direct){ console.error("Missing DATABASE_URL or DIRECT_URL"); process.exit(1); }
-const run = async ()=>{
-  const ok1 = await canConnect(db.host, db.port);
-  const ok2 = await canConnect(direct.host, direct.port);
-  log({CONNECTIVITY:{[`${db.host}:${db.port}`]:ok1, [`${direct.host}:${direct.port}`]:ok2}});
-  if(!ok1){ console.error("Cannot reach DATABASE_URL host/port"); process.exit(1); }
-  if(!ok2){ console.error("Cannot reach DIRECT_URL host/port"); process.exit(1); }
-};
-await run();
+
+console.log('🌐 Testing connectivity...');
+const dbConnectivity = await testConnection(dbInfo.host, dbInfo.port);
+const directConnectivity = await testConnection(directInfo.host, directInfo.port);
+
+console.log(`${dbInfo.host}:${dbInfo.port} -> ${dbConnectivity ? '✅ Connected' : '❌ Failed'}`);
+console.log(`${directInfo.host}:${directInfo.port} -> ${directConnectivity ? '✅ Connected' : '❌ Failed'}`);
+
+if (!dbConnectivity || !directConnectivity) {
+  console.error('\n❌ Connection test failed');
+  console.error('Please check your network and database configuration');
+  process.exit(1);
+}
+
+// Prisma接続テスト
+console.log('\n🔌 Testing Prisma connection...');
+let prisma;
+try {
+  prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: dbUrl
+      }
+    }
+  });
+  
+  // 簡単なクエリを実行
+  await prisma.$queryRaw`SELECT 1 as test`;
+  console.log('✅ Prisma connection successful');
+  
+} catch (error) {
+  console.error('❌ Prisma connection failed:', error.message);
+  
+  // エラーの詳細分析
+  if (error.message.includes('Tenant or user not found')) {
+    console.error('\n💡 This error usually means:');
+    console.error('1. Database credentials are incorrect');
+    console.error('2. Database user does not exist');
+    console.error('3. Connection string format is wrong');
+  } else if (error.message.includes('connection')) {
+    console.error('\n💡 This error usually means:');
+    console.error('1. Network connectivity issues');
+    console.error('2. Firewall blocking connection');
+    console.error('3. Database server is down');
+  }
+  
+  process.exit(1);
+} finally {
+  if (prisma) {
+    await prisma.$disconnect();
+  }
+}
+
+console.log('\n🎉 All database checks passed!');
+console.log('Ready to build and deploy.');
