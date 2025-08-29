@@ -25,20 +25,13 @@ export default function SignInPage() {
   useEffect(() => {
     if (status === 'loading') return;
     
-    if (status === 'unauthenticated') {
-      // 既にサインインページにいる場合は何もしない
-      return;
-    }
-
     // 認証済みの場合はダッシュボードにリダイレクト
     if (status === 'authenticated' && session) {
       console.log('✅ User is authenticated, redirecting to dashboard...');
-      // 少し遅延を入れてからリダイレクト
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 100);
+      // 一度だけリダイレクトを実行
+      router.replace('/dashboard');
     }
-  }, [session, status, router]);
+  }, [status, session, router]);
 
   const {
     register,
