@@ -26,15 +26,17 @@ export default function SignInPage() {
     if (status === 'loading') return;
     
     if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+      // 既にサインインページにいる場合は何もしない
       return;
     }
 
     // 認証済みの場合はダッシュボードにリダイレクト
     if (status === 'authenticated' && session) {
       console.log('✅ User is authenticated, redirecting to dashboard...');
-      router.push('/dashboard');
-      router.refresh(); // セッション状態を更新
+      // 少し遅延を入れてからリダイレクト
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 100);
     }
   }, [session, status, router]);
 
@@ -68,8 +70,9 @@ export default function SignInPage() {
       } else if (result?.ok) {
         console.log('✅ Login successful, redirecting to dashboard...');
         // ログイン成功後、確実にダッシュボードにリダイレクト
-        router.push('/dashboard');
-        router.refresh(); // セッション状態を更新
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 100);
       } else {
         console.log('⚠️ Login result unclear');
         setError('ログインの結果が不明です。再度お試しください。');
@@ -94,9 +97,16 @@ export default function SignInPage() {
     );
   }
 
-  // 既に認証済みの場合は何も表示しない（リダイレクト中）
+  // 既に認証済みの場合はローディング表示（リダイレクト中）
   if (status === 'authenticated') {
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">ダッシュボードにリダイレクト中...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -232,8 +242,9 @@ export default function SignInPage() {
                     setError(`デモログインエラー: ${result.error}`);
                   } else if (result?.ok) {
                     console.log('✅ Demo login successful, redirecting to dashboard...');
-                    router.push('/dashboard');
-                    router.refresh(); // セッション状態を更新
+                    setTimeout(() => {
+                      router.push('/dashboard');
+                    }, 100);
                   } else {
                     console.log('⚠️ Demo login result unclear');
                     setError('デモログインの結果が不明です。再度お試しください。');
