@@ -100,7 +100,7 @@ export const authOptions: NextAuthOptions = {
           return { 
             id: user.id, 
             email: user.email, 
-            name: user.name
+            name: user.name ?? undefined
           };
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
@@ -118,16 +118,18 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
+        // store uid for session mapping
+        (token as any).uid = (user as any).id;
+        token.id = (user as any).id;
+        token.email = (user as any).email;
+        token.name = (user as any).name;
         (token as any).isAdmin = (user as any).isAdmin ?? false;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id as string;
+        (session.user as any).id = ((token as any).uid as string) ?? (token.id as string);
         (session.user as any).email = token.email as string;
         (session.user as any).name = token.name as string;
         (session.user as any).isAdmin = Boolean((token as any)?.isAdmin);
