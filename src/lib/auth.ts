@@ -61,9 +61,9 @@ export const authOptions: NextAuthOptions = {
             console.log('🔍 Checking database for user:', email);
           }
           
-          // 通常のユーザー認証
-          const user = await prisma.user.findUnique({ 
-            where: { email }
+          // 通常のユーザー認証（メール大文字小文字を無視して検索）
+          const user = await prisma.user.findFirst({
+            where: { email: { equals: email, mode: 'insensitive' } }
           });
           
           if (!user) {
