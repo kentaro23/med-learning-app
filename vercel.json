@@ -2,7 +2,6 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "regions": ["nrt1"],
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
