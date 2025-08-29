@@ -28,6 +28,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id: user.id });
   } catch (e) {
     console.error('admin reset-password error', e);
+    if (e instanceof Error) {
+      return NextResponse.json({ error: 'internal', name: e.name, message: e.message }, { status: 500 });
+    }
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }
