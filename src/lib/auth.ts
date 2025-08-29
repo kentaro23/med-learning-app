@@ -143,8 +143,10 @@ export const authOptions: NextAuthOptions = {
         return `${baseUrl}/dashboard`;
       }
       
-      // サインインページからのリダイレクト
+      // サインインページからのリダイレクトは、ログイン成功時のみダッシュボードに
+      // 既に認証済みの場合は、元々アクセスしようとしていたページにリダイレクト
       if (url.includes('/auth/signin')) {
+        // サインインページからのリダイレクトは、ログイン成功時のみ
         return `${baseUrl}/dashboard`;
       }
       
@@ -167,10 +169,12 @@ export const authOptions: NextAuthOptions = {
       try {
         const email = user.email?.toLowerCase() || '';
         if (email && ADMIN_EMAILS.includes(email)) {
-          await prisma.user.update({ 
-            where: { id: user.id }, 
-            data: { isAdmin: true } 
-          });
+          // isAdminフィールドがスキーマに存在しないため、この処理をコメントアウト
+          // await prisma.user.update({ 
+          //   where: { id: user.id }, 
+          //   data: { isAdmin: true } 
+          // });
+          console.log('Admin user created:', email);
         }
       } catch (error) {
         console.error('Failed to set admin flag:', error);

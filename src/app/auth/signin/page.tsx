@@ -18,6 +18,7 @@ type SignInForm = z.infer<typeof signInSchema>;
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
 
@@ -26,12 +27,13 @@ export default function SignInPage() {
     if (status === 'loading') return;
     
     // 認証済みの場合はダッシュボードにリダイレクト
-    if (status === 'authenticated' && session) {
+    if (status === 'authenticated' && session && !isRedirecting) {
       console.log('✅ User is authenticated, redirecting to dashboard...');
+      setIsRedirecting(true);
       // 一度だけリダイレクトを実行
       router.replace('/dashboard');
     }
-  }, [status, session, router]);
+  }, [status, session, router, isRedirecting]);
 
   const {
     register,
@@ -62,10 +64,9 @@ export default function SignInPage() {
         setError(`ログインエラー: ${result.error}`);
       } else if (result?.ok) {
         console.log('✅ Login successful, redirecting to dashboard...');
-        // ログイン成功後、確実にダッシュボードにリダイレクト
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 100);
+        setIsRedirecting(true);
+        // ログイン後、確実にダッシュボードにリダイレクト
+        router.push('/dashboard');
       } else {
         console.log('⚠️ Login result unclear');
         setError('ログインの結果が不明です。再度お試しください。');
@@ -91,12 +92,27 @@ export default function SignInPage() {
   }
 
   // 既に認証済みの場合はローディング表示（リダイレクト中）
-  if (status === 'authenticated') {
+  if (status === 'authenticated' && isRedirecting) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">ダッシュボードにリダイレクト中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 認証済みだがリダイレクトしていない場合は、手動でリダイレクト
+  if (status === 'authenticated' && !isRedirecting) {
+    // この状態は通常発生しないが、念のため
+    setIsRedirecting(true);
+    router.replace('/dashboard');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">リダイレクト準備中...</p>
         </div>
       </div>
     );
@@ -171,6 +187,9 @@ export default function SignInPage() {
                 <p className="text-xs text-gray-500">
                   セッション状態: {status}
                 </p>
+                <p className="text-xs text-gray-500">
+                  リダイレクト状態: {isRedirecting ? 'true' : 'false'}
+                </p>
               </div>
             )}
 
@@ -235,9 +254,8 @@ export default function SignInPage() {
                     setError(`デモログインエラー: ${result.error}`);
                   } else if (result?.ok) {
                     console.log('✅ Demo login successful, redirecting to dashboard...');
-                    setTimeout(() => {
-                      router.push('/dashboard');
-                    }, 100);
+                    setIsRedirecting(true);
+                    router.push('/dashboard');
                   } else {
                     console.log('⚠️ Demo login result unclear');
                     setError('デモログインの結果が不明です。再度お試しください。');
