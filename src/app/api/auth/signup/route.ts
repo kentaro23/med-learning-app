@@ -9,8 +9,25 @@ export async function POST(req: Request) {
 
     const normEmail = String(email).toLowerCase().trim();
     const exists = await prisma.user.findUnique({ where: { email: normEmail } });
-    if (exists) return NextResponse.json({ error: 'exists' }, { status: 409 });
 
+    // 既存ユーザーがいて、まだパスワード未設定なら「初回パスワード設定」として受理
+    if (exists) {
+      if (!exists.passwordHash) {
+        const passwordHash = await bcrypt.hash(password, 10);
+        await prisma.user.update({
+          where: { id: exists.id },
+          data: {
+            passwordHash,
+            name: (name?.trim() || exists.name) ?? null,
+            school: (school?.trim() || exists.school) ?? null,
+          },
+        });
+        return NextResponse.json({ ok: true, updated: true });
+      }
+      return NextResponse.json({ error: 'exists' }, { status: 409 });
+    }
+
+    // 新規作成
     const passwordHash = await bcrypt.hash(password, 10);
     await prisma.user.create({
       data: {
