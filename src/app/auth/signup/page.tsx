@@ -13,9 +13,9 @@ const signUpSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
   password: z.string().min(6, 'パスワードは6文字以上で入力してください').max(100, 'パスワードは100文字以下で入力してください'),
   confirmPassword: z.string(),
-  university: z.string().min(1, '大学名を入力してください'),
-  grade: z.string().min(1, '学年を選択してください'),
-  major: z.string().min(1, '専攻を入力してください'),
+  university: z.string().optional(),
+  grade: z.string().optional(),
+  major: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "パスワードが一致しません",
   path: ["confirmPassword"],
@@ -33,9 +33,13 @@ export default function SignUpPage() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
   } = useForm<SignUpForm>({
     resolver: zodResolver(signUpSchema),
+    mode: 'onChange',
   });
+
+  const watchedPassword = watch('password');
 
   const onSubmit = async (data: SignUpForm) => {
     setIsLoading(true);
@@ -52,14 +56,13 @@ export default function SignUpPage() {
           name: data.name,
           email: data.email,
           password: data.password,
-          university: data.university,
-          grade: data.grade,
-          major: data.major,
+          university: data.university || '',
+          grade: data.grade || '',
+          major: data.major || '',
         }),
       });
 
       if (response.ok) {
-        const result = await response.json();
         setSuccess('アカウントが作成されました！自動的にログインします...');
         
         // 新規登録成功後、自動的にログイン
@@ -96,14 +99,19 @@ export default function SignUpPage() {
       } else {
         const errorData = await response.json();
         console.error('Signup failed:', errorData);
-        const errorMessage = errorData.error || 'アカウントの作成に失敗しました';
-        if (errorData.details) {
-          console.error('Validation details:', errorData.details);
+        let errorMessage = 'アカウントの作成に失敗しました';
+        
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
         }
+        
         setError(errorMessage);
       }
     } catch (err) {
-      setError('アカウントの作成に失敗しました');
+      console.error('Signup error:', err);
+      setError('ネットワークエラーが発生しました。インターネット接続を確認してください。');
     } finally {
       setIsLoading(false);
     }
@@ -131,14 +139,17 @@ export default function SignUpPage() {
             {/* ユーザー名 */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                ユーザー名 *
+                ユーザー名 <span className="text-red-500">*</span>
               </label>
               <input
                 id="name"
                 type="text"
                 {...register('name')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                  errors.name ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="あなたの名前"
+                autoComplete="name"
               />
               {errors.name && (
                 <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>
@@ -148,14 +159,17 @@ export default function SignUpPage() {
             {/* メールアドレス */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                メールアドレス *
+                メールアドレス <span className="text-red-500">*</span>
               </label>
               <input
                 id="email"
                 type="email"
                 {...register('email')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                  errors.email ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="example@email.com"
+                autoComplete="email"
               />
               {errors.email && (
                 <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
@@ -165,41 +179,48 @@ export default function SignUpPage() {
             {/* パスワード */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                パスワード *
+                パスワード <span className="text-red-500">*</span>
               </label>
               <input
                 id="password"
                 type="password"
                 {...register('password')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                  errors.password ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="6文字以上で入力"
+                autoComplete="new-password"
               />
               {errors.password && (
                 <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>
               )}
+              <p className="text-xs text-gray-500 mt-1">6文字以上の英数字で入力してください</p>
             </div>
 
             {/* パスワード確認 */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                パスワード確認 *
+                パスワード確認 <span className="text-red-500">*</span>
               </label>
               <input
                 id="confirmPassword"
                 type="password"
                 {...register('confirmPassword')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="パスワードを再入力"
+                autoComplete="new-password"
               />
               {errors.confirmPassword && (
                 <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>
               )}
             </div>
 
-            {/* 大学名 */}
+            {/* 大学名（任意） */}
             <div>
               <label htmlFor="university" className="block text-sm font-medium text-gray-700 mb-2">
-                大学名 *
+                大学名 <span className="text-gray-500">（任意）</span>
               </label>
               <input
                 id="university"
@@ -207,16 +228,14 @@ export default function SignUpPage() {
                 {...register('university')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 placeholder="例：東京医科大学"
+                autoComplete="organization"
               />
-              {errors.university && (
-                <p className="text-red-600 text-sm mt-1">{errors.university.message}</p>
-              )}
             </div>
 
-            {/* 学年 */}
+            {/* 学年（任意） */}
             <div>
               <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
-                学年 *
+                学年 <span className="text-gray-500">（任意）</span>
               </label>
               <select
                 id="grade"
@@ -233,15 +252,12 @@ export default function SignUpPage() {
                 <option value="大学院生">大学院生</option>
                 <option value="その他">その他</option>
               </select>
-              {errors.grade && (
-                <p className="text-red-600 text-sm mt-1">{errors.grade.message}</p>
-              )}
             </div>
 
-            {/* 専攻 */}
+            {/* 専攻（任意） */}
             <div>
               <label htmlFor="major" className="block text-sm font-medium text-gray-700 mb-2">
-                専攻 *
+                専攻 <span className="text-gray-500">（任意）</span>
               </label>
               <input
                 id="major"
@@ -249,23 +265,39 @@ export default function SignUpPage() {
                 {...register('major')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 placeholder="例：医学部"
+                autoComplete="organization"
               />
-              {errors.major && (
-                <p className="text-red-600 text-sm mt-1">{errors.major.message}</p>
-              )}
             </div>
 
             {/* エラーメッセージ */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-600 text-sm">{error}</p>
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-red-600 text-sm">{error}</p>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* 成功メッセージ */}
             {success && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-green-600 text-sm">{success}</p>
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-green-600 text-sm">{success}</p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -273,7 +305,7 @@ export default function SignUpPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors font-medium"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">

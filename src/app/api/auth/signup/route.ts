@@ -4,12 +4,12 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 
 const signUpSchema = z.object({
-  name: z.string().min(2).max(50),
-  email: z.string().email(),
-  password: z.string().min(6).max(100),
-  university: z.string().min(1, '大学名を入力してください'),
-  grade: z.string().min(1, '学年を選択してください'),
-  major: z.string().min(1, '専攻を入力してください'),
+  name: z.string().min(2, '名前は2文字以上で入力してください').max(50, '名前は50文字以下で入力してください'),
+  email: z.string().email('有効なメールアドレスを入力してください'),
+  password: z.string().min(6, 'パスワードは6文字以上で入力してください').max(100, 'パスワードは100文字以下で入力してください'),
+  university: z.string().optional(),
+  grade: z.string().optional(),
+  major: z.string().optional(),
 });
 
 export const dynamic = 'force-dynamic';
@@ -25,11 +25,11 @@ export async function POST(request: NextRequest) {
     console.log('✅ Data validation passed');
 
     // メールアドレスの正規化
-    const e = String(email).toLowerCase().trim();
+    const normalizedEmail = String(email).toLowerCase().trim();
 
     // 既存ユーザーの確認
     const existingUser = await prisma.user.findUnique({
-      where: { email: e }
+      where: { email: normalizedEmail }
     });
 
     if (existingUser) {
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name,
-        email: e,
+        email: normalizedEmail,
         passwordHash: passwordHash,
-        university: university,
-        grade: grade,
-        major: major,
-      },
+        university: university || '',
+        grade: grade || '',
+        major: major || '',
+      } as any,
       select: {
         id: true,
         name: true,
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('✅ User created successfully:', { id: user.id, name, email });
+    console.log('✅ User created successfully:', { id: user.id, name, email: normalizedEmail });
     
     return NextResponse.json({
       success: true,
@@ -75,14 +75,32 @@ export async function POST(request: NextRequest) {
     console.error('Sign up error:', error);
     
     if (error instanceof z.ZodError) {
+      const errorMessages = error.issues.map(issue => issue.message).join(', ');
       return NextResponse.json(
-        { error: '無効なリクエストデータです', details: error },
+        { error: `入力データに問題があります: ${errorMessages}` },
         { status: 400 }
       );
     }
 
+    // Prismaエラーの詳細な処理
+    if (error instanceof Error) {
+      if (error.message.includes('Unique constraint')) {
+        return NextResponse.json(
+          { error: 'このメールアドレスは既に登録されています' },
+          { status: 409 }
+        );
+      }
+      
+      if (error.message.includes('Database')) {
+        return NextResponse.json(
+          { error: 'データベースエラーが発生しました。しばらく時間をおいて再度お試しください。' },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json(
-      { error: `アカウントの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}` },
+      { error: 'アカウントの作成に失敗しました。しばらく時間をおいて再度お試しください。' },
       { status: 500 }
     );
   }
