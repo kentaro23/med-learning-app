@@ -70,7 +70,8 @@ export const authOptions: NextAuthOptions = {
             id: user.id, 
             email: user.email, 
             name: user.name,
-            isAdmin: user.isAdmin
+            // isAdminフィールドが存在しない場合はfalseを返す
+            isAdmin: false
           };
         } catch (error) {
           console.error('❌ Authorization error:', error);
@@ -104,13 +105,28 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       // ログイン成功後のリダイレクト処理
+      console.log('🔄 Redirect callback:', { url, baseUrl });
+      
+      // ログイン成功後のデフォルトリダイレクト
+      if (url === baseUrl || url === `${baseUrl}/`) {
+        return `${baseUrl}/dashboard`;
+      }
+      
+      // サインインページからのリダイレクト
+      if (url.includes('/auth/signin')) {
+        return `${baseUrl}/dashboard`;
+      }
+      
+      // 相対パスの場合はbaseUrlと結合
       if (url.startsWith('/')) {
-        // 相対パスの場合はbaseUrlと結合
         return `${baseUrl}${url}`;
-      } else if (new URL(url).origin === baseUrl) {
-        // 同じオリジンの場合はそのまま
+      }
+      
+      // 同じオリジンの場合はそのまま
+      if (new URL(url).origin === baseUrl) {
         return url;
       }
+      
       // デフォルトはダッシュボード
       return `${baseUrl}/dashboard`;
     }

@@ -23,11 +23,18 @@ export default function SignInPage() {
 
   // セッションが存在する場合の自動リダイレクト
   useEffect(() => {
-    if (status === 'loading') return; // ローディング中は何もしない
+    if (status === 'loading') return;
     
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+      return;
+    }
+
+    // 認証済みの場合はダッシュボードにリダイレクト
     if (status === 'authenticated' && session) {
       console.log('✅ User is authenticated, redirecting to dashboard...');
       router.push('/dashboard');
+      router.refresh(); // セッション状態を更新
     }
   }, [session, status, router]);
 
@@ -60,10 +67,9 @@ export default function SignInPage() {
         setError(`ログインエラー: ${result.error}`);
       } else if (result?.ok) {
         console.log('✅ Login successful, redirecting to dashboard...');
-        // セッション更新を待ってからリダイレクト
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 100);
+        // ログイン成功後、確実にダッシュボードにリダイレクト
+        router.push('/dashboard');
+        router.refresh(); // セッション状態を更新
       } else {
         console.log('⚠️ Login result unclear');
         setError('ログインの結果が不明です。再度お試しください。');
@@ -226,9 +232,8 @@ export default function SignInPage() {
                     setError(`デモログインエラー: ${result.error}`);
                   } else if (result?.ok) {
                     console.log('✅ Demo login successful, redirecting to dashboard...');
-                    setTimeout(() => {
-                      router.push('/dashboard');
-                    }, 100);
+                    router.push('/dashboard');
+                    router.refresh(); // セッション状態を更新
                   } else {
                     console.log('⚠️ Demo login result unclear');
                     setError('デモログインの結果が不明です。再度お試しください。');
