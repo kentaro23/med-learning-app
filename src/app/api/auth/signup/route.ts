@@ -16,15 +16,23 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📝 Sign up request received');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📝 Sign up request received');
+    }
     
     const body = await request.json();
-    console.log('📋 Request body:', { ...body, password: '[HIDDEN]' });
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📋 Request body:', { ...body, password: '[HIDDEN]' });
+    }
     
     const { name, email, password, university, grade, major } = signUpSchema.parse(body);
-    console.log('✅ Data validation passed');
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Data validation passed');
+    }
 
-    // メールアドレスの正規化
+    // メールアドレスの正規化（小文字化）
     const normalizedEmail = String(email).toLowerCase().trim();
 
     // 既存ユーザーの確認
@@ -39,8 +47,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // パスワードのハッシュ化
+    // パスワードのハッシュ化（bcryptjs、salt rounds: 12）
     const passwordHash = await bcrypt.hash(password, 12);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 Password hashed successfully');
+    }
 
     // ユーザーの作成
     const user = await prisma.user.create({
@@ -51,7 +63,7 @@ export async function POST(request: NextRequest) {
         university: university || '',
         grade: grade || '',
         major: major || '',
-      } as any,
+      },
       select: {
         id: true,
         name: true,
@@ -63,7 +75,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('✅ User created successfully:', { id: user.id, name, email: normalizedEmail });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ User created successfully:', { id: user.id, name, email: normalizedEmail });
+    }
     
     return NextResponse.json({
       success: true,
@@ -72,7 +86,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Sign up error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Sign up error:', error);
+    }
     
     if (error instanceof z.ZodError) {
       const errorMessages = error.issues.map(issue => issue.message).join(', ');

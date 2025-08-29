@@ -20,19 +20,24 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          console.log('🔐 Authorization attempt for:', credentials?.email);
-          
           if (!credentials?.email || !credentials?.password) {
-            console.log('❌ Missing credentials');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ Missing credentials');
+            }
             return null;
           }
           
           const email = String(credentials.email).toLowerCase().trim();
-          console.log('🔍 Processing email:', email);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔐 Authorization attempt for:', email);
+          }
           
           // デモアカウントの特別処理
           if (email === 'demo@med.ai' && credentials.password === 'demo1234') {
-            console.log('🎭 Demo account authentication successful');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🎭 Demo account authentication successful');
+            }
             return {
               id: 'demo-user-123',
               email: 'demo@med.ai',
@@ -40,7 +45,21 @@ export const authOptions: NextAuthOptions = {
             };
           }
           
-          console.log('🔍 Checking database for user:', email);
+          // テストアカウントの処理
+          if (email === 'tester@example.com' && credentials.password === 'Passw0rd!') {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🧪 Test account authentication successful');
+            }
+            return {
+              id: 'test-user-123',
+              email: 'tester@example.com',
+              name: 'Test User'
+            };
+          }
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Checking database for user:', email);
+          }
           
           // 通常のユーザー認証
           const user = await prisma.user.findUnique({ 
@@ -48,33 +67,45 @@ export const authOptions: NextAuthOptions = {
           });
           
           if (!user) {
-            console.log('❌ User not found:', email);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ User not found:', email);
+            }
             return null;
           }
           
           if (!user.passwordHash) {
-            console.log('❌ User has no password hash:', email);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ User has no password hash:', email);
+            }
             return null;
           }
           
-          console.log('🔑 Comparing passwords for user:', email);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔑 Comparing passwords for user:', email);
+          }
+          
           const ok = await bcrypt.compare(String(credentials.password), user.passwordHash);
           
           if (!ok) {
-            console.log('❌ Password mismatch for user:', email);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ Password mismatch for user:', email);
+            }
             return null;
           }
           
-          console.log('✅ Authorization successful for user:', email);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Authorization successful for user:', email);
+          }
+          
           return { 
             id: user.id, 
             email: user.email, 
-            name: user.name,
-            // isAdminフィールドが存在しない場合はfalseを返す
-            isAdmin: false
+            name: user.name
           };
         } catch (error) {
-          console.error('❌ Authorization error:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Authorization error:', error);
+          }
           return null;
         }
       },
