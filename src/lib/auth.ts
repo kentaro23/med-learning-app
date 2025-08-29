@@ -101,6 +101,18 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).isAdmin = Boolean((token as any)?.isAdmin);
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // ログイン成功後のリダイレクト処理
+      if (url.startsWith('/')) {
+        // 相対パスの場合はbaseUrlと結合
+        return `${baseUrl}${url}`;
+      } else if (new URL(url).origin === baseUrl) {
+        // 同じオリジンの場合はそのまま
+        return url;
+      }
+      // デフォルトはダッシュボード
+      return `${baseUrl}/dashboard`;
     }
   },
   events: {

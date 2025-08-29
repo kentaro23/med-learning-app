@@ -21,11 +21,14 @@ export default function SignInPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  // セッションが存在する場合の処理を完全に無効化
+  // セッションが存在する場合の自動リダイレクト
   useEffect(() => {
-    console.log('🔍 Current session status:', status);
-    console.log('🔍 Current session data:', session);
-    // 無限リダイレクトループを防ぐため、自動リダイレクトを完全に無効化
+    if (status === 'loading') return; // ローディング中は何もしない
+    
+    if (status === 'authenticated' && session) {
+      console.log('✅ User is authenticated, redirecting to dashboard...');
+      router.push('/dashboard');
+    }
   }, [session, status, router]);
 
   const {
@@ -47,6 +50,7 @@ export default function SignInPage() {
         email: data.email,
         password: data.password,
         redirect: false,
+        callbackUrl: '/dashboard'
       });
 
       console.log('📊 SignIn result:', result);
@@ -56,8 +60,10 @@ export default function SignInPage() {
         setError(`ログインエラー: ${result.error}`);
       } else if (result?.ok) {
         console.log('✅ Login successful, redirecting to dashboard...');
-        // 直接リダイレクト（タイムアウトなし）
-        router.push('/dashboard');
+        // セッション更新を待ってからリダイレクト
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 100);
       } else {
         console.log('⚠️ Login result unclear');
         setError('ログインの結果が不明です。再度お試しください。');
@@ -69,6 +75,23 @@ export default function SignInPage() {
       setIsLoading(false);
     }
   };
+
+  // ローディング中または既に認証済みの場合はローディング表示
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">ログイン状態を確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 既に認証済みの場合は何も表示しない（リダイレクト中）
+  if (status === 'authenticated') {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -139,9 +162,6 @@ export default function SignInPage() {
                 <p className="text-xs text-gray-500">
                   セッション状態: {status}
                 </p>
-                <p className="text-xs text-gray-500">
-                  ユーザー: {session?.user?.email || 'なし'}
-                </p>
               </div>
             )}
 
@@ -196,6 +216,7 @@ export default function SignInPage() {
                     email: demoEmail,
                     password: demoPassword,
                     redirect: false,
+                    callbackUrl: '/dashboard'
                   });
                   
                   console.log('🧪 Demo login result:', result);
@@ -205,7 +226,9 @@ export default function SignInPage() {
                     setError(`デモログインエラー: ${result.error}`);
                   } else if (result?.ok) {
                     console.log('✅ Demo login successful, redirecting to dashboard...');
-                    router.push('/dashboard');
+                    setTimeout(() => {
+                      router.push('/dashboard');
+                    }, 100);
                   } else {
                     console.log('⚠️ Demo login result unclear');
                     setError('デモログインの結果が不明です。再度お試しください。');
