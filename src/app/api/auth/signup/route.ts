@@ -1,123 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
-const signUpSchema = z.object({
-  name: z.string().min(2, '名前は2文字以上で入力してください').max(50, '名前は50文字以下で入力してください'),
-  email: z.string().email('有効なメールアドレスを入力してください'),
-  password: z.string().min(6, 'パスワードは6文字以上で入力してください').max(100, 'パスワードは100文字以下で入力してください'),
-  university: z.string().optional(),
-  grade: z.string().optional(),
-  major: z.string().optional(),
-});
-
-export const dynamic = 'force-dynamic';
-
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📝 Sign up request received');
-    }
-    
-    const body = await request.json();
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📋 Request body:', { ...body, password: '[HIDDEN]' });
-    }
-    
-    const { name, email, password, university, grade, major } = signUpSchema.parse(body);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Data validation passed');
-    }
+    const { email, password, name, school } = await req.json();
+    if (!email || !password) return NextResponse.json({ error: 'missing' }, { status: 400 });
 
-    // メールアドレスの正規化（小文字化）
-    const normalizedEmail = String(email).toLowerCase().trim();
+    const normEmail = String(email).toLowerCase().trim();
+    const exists = await prisma.user.findUnique({ where: { email: normEmail } });
+    if (exists) return NextResponse.json({ error: 'exists' }, { status: 409 });
 
-    // 既存ユーザーの確認
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail }
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'このメールアドレスは既に登録されています' },
-        { status: 409 }
-      );
-    }
-
-    // パスワードのハッシュ化（bcryptjs、salt rounds: 12）
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔐 Password hashed successfully');
-    }
-
-    // ユーザーの作成
-    const user = await prisma.user.create({
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.user.create({
       data: {
-        name,
-        email: normalizedEmail,
-        passwordHash: passwordHash,
-        university: university || '',
-        grade: grade || '',
-        major: major || '',
+        email: normEmail,
+        passwordHash,
+        name: name?.trim() || null,
+        school: school?.trim() || null,
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        university: true,
-        grade: true,
-        major: true,
-        createdAt: true,
-      }
     });
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ User created successfully:', { id: user.id, name, email: normalizedEmail });
-    }
-    
-    return NextResponse.json({
-      success: true,
-      message: 'アカウントが正常に作成されました',
-      user,
-    }, { status: 201 });
-
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Sign up error:', error);
-    }
-    
-    if (error instanceof z.ZodError) {
-      const errorMessages = error.issues.map(issue => issue.message).join(', ');
-      return NextResponse.json(
-        { error: `入力データに問題があります: ${errorMessages}` },
-        { status: 400 }
-      );
-    }
-
-    // Prismaエラーの詳細な処理
-    if (error instanceof Error) {
-      if (error.message.includes('Unique constraint')) {
-        return NextResponse.json(
-          { error: 'このメールアドレスは既に登録されています' },
-          { status: 409 }
-        );
-      }
-      
-      if (error.message.includes('Database')) {
-        return NextResponse.json(
-          { error: 'データベースエラーが発生しました。しばらく時間をおいて再度お試しください。' },
-          { status: 500 }
-        );
-      }
-    }
-
-    return NextResponse.json(
-      { error: 'アカウントの作成に失敗しました。しばらく時間をおいて再度お試しください。' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error('signup error', e);
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }
