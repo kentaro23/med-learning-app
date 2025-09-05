@@ -45,8 +45,12 @@ export default function SignupClient() {
       }
 
       if (!res.ok) {
-        let msg = '登録に失敗しました。サーバーエラーが発生しています。';
-        try { const data = await res.json(); if (data?.error) msg = `登録に失敗しました: ${data.error}`; } catch {}
+        let msg = '登録に失敗しました。';
+        try {
+          const data = await res.json();
+          const parts = [data?.error, data?.code, data?.message].filter(Boolean);
+          if (parts.length) msg += ' ' + parts.join(' / ');
+        } catch {}
         setLoading(false);
         setError(msg);
         return;
