@@ -1,8 +1,8 @@
 'use client';
 
-import { signIn, useSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 function useCallbackUrl(sp: ReturnType<typeof useSearchParams>) {
   return useMemo(() => {
@@ -14,15 +14,11 @@ function useCallbackUrl(sp: ReturnType<typeof useSearchParams>) {
 }
 
 export default function SigninClient() {
-  const { status } = useSession();
   const router = useRouter();
   const sp = useSearchParams();
   const callbackUrl = useCallbackUrl(sp);
   const [error, setError] = useState<string|null>(sp.get('error') ? 'メールアドレスまたはパスワードが正しくありません。' : null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => { if (status === 'authenticated') router.replace('/dashboard'); }, [status, router]);
-  if (status === 'authenticated') return null;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError(null); setLoading(true);
