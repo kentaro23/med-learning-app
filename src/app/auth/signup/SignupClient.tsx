@@ -32,28 +32,36 @@ export default function SignupClient() {
     const name = String(f.get('name')||'');
     const school = String(f.get('school')||'');
 
-    const res = await fetch('/api/auth/signup', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ email, password, name, school })
-    });
-    
-    if (res.status === 409) {
-      setLoading(false);
-      router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(email)}`);
-      return;
-    }
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, password, name, school })
+      });
 
-    if (!res.ok) {
-      setLoading(false);
-      setError('登録に失敗しました。既に登録済みの可能性があります。');
-      return;
-    }
+      if (res.status === 409) {
+        setLoading(false);
+        router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(email)}`);
+        return;
+      }
 
-    const sig = await signIn('credentials', { email, password, redirect: false, callbackUrl });
-    setLoading(false);
-    if (!sig || (sig as any).error) { setError('自動ログインに失敗しました。ログイン画面からお試しください。'); return; }
-    if ((sig as any).url) router.replace((sig as any).url as string);
-    else router.replace('/dashboard');
+      if (!res.ok) {
+        let msg = '登録に失敗しました。サーバーエラーが発生しています。';
+        try { const data = await res.json(); if (data?.error) msg = `登録に失敗しました: ${data.error}`; } catch {}
+        setLoading(false);
+        setError(msg);
+        return;
+      }
+
+      const sig = await signIn('credentials', { email, password, redirect: false, callbackUrl });
+      setLoading(false);
+      if (!sig || (sig as any).error) { setError('自動ログインに失敗しました。ログイン画面からお試しください。'); return; }
+      if ((sig as any).url) router.replace((sig as any).url as string);
+      else router.replace('/dashboard');
+    } catch (err: any) {
+      console.error('signup fetch error:', err);
+      setLoading(false);
+      setError('ネットワークエラーが発生しました。通信環境をご確認の上、再度お試しください。');
+    }
   }
 
   return (
