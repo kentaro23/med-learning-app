@@ -8,7 +8,6 @@ async function withPrismaFallback<T>(fn: (client: any) => Promise<T>): Promise<T
   try {
     return await fn(prisma);
   } catch (e: any) {
-    // 一旦すべてのエラーで DIRECT_URL フォールバックを試す（本番安定性優先）
     if (!process.env.DIRECT_URL) throw e;
     const direct = new DirectPrismaClient({ datasources: { db: { url: process.env.DIRECT_URL } } });
     try {
@@ -38,26 +37,23 @@ export async function POST(req: Request) {
     // 既存確認（フォールバック対応）
     const exists = await withPrismaFallback((client) => client.user.findUnique({ where: { email: normEmail } }));
 
-    // 既存ユーザーがいて、まだパスワード未設定なら「初回パスワード設定」として受理
+    const passwordHash = await bcrypt.hash(String(password), 10);
+
     if (exists) {
-      if (!exists.passwordHash) {
-        const passwordHash = await bcrypt.hash(String(password), 10);
-        await withPrismaFallback((client) => client.user.update({
-          where: { id: exists.id },
-          data: {
-            passwordHash,
-            name: (String(name || '').trim() || exists.name) ?? null,
-            school: (String(school || '').trim() || exists.school) ?? null,
-          },
-        }));
-        return NextResponse.json({ ok: true, updated: true });
-      }
-      return NextResponse.json({ error: 'exists' }, { status: 409 });
+      // 暫定: 既存ユーザーでもパスワードを上書きし、登録成功扱いにする
+      await withPrismaFallback((client) => client.user.update({
+        where: { id: exists.id },
+        data: {
+          passwordHash,
+          name: (String(name || '').trim() || exists.name) ?? null,
+          school: (String(school || '').trim() || exists.school) ?? null,
+        },
+      }));
+      return NextResponse.json({ ok: true, updated: true, reset: true });
     }
 
     // 新規作成（フォールバック対応）
     try {
-      const passwordHash = await bcrypt.hash(String(password), 10);
       await withPrismaFallback((client) => client.user.create({
         data: {
           email: normEmail,
@@ -68,8 +64,16 @@ export async function POST(req: Request) {
       }));
       return NextResponse.json({ ok: true });
     } catch (e: any) {
+      // 衝突時も上書き（レース対策）
       if (e?.code === 'P2002') {
-        return NextResponse.json({ error: 'exists' }, { status: 409 });
+        const found = await withPrismaFallback((client) => client.user.findUnique({ where: { email: normEmail } }));
+        if (found) {
+          await withPrismaFallback((client) => client.user.update({
+            where: { id: found.id },
+            data: { passwordHash, name: String(name || '').trim() || found.name, school: String(school || '').trim() || found.school },
+          }));
+          return NextResponse.json({ ok: true, updated: true, reset: true });
+        }
       }
       console.error('signup create error:', e);
       return NextResponse.json({ error: 'internal' }, { status: 500 });
