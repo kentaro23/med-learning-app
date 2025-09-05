@@ -32,15 +32,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p));
+  // 認証関連は完全スキップ（フォーム/NextAuth API は常に通す）
+  if (pathname.startsWith('/auth') || pathname.startsWith('/api/auth')) {
+    return NextResponse.next();
+  }
+
   const isProtected = PROTECTED_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-
-  // 認証済みユーザーが /auth/* に来たら /dashboard へ
-  if (token && pathname.startsWith('/auth')) {
-    const url = new URL('/dashboard', req.url);
-    return NextResponse.redirect(url);
+  // トークン取得に失敗しても未認証扱いで処理継続
+  let token: any = null;
+  try {
+    token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  } catch {
+    token = null;
   }
 
   // 未認証で保護ページに来たら /auth/signin へ（callbackUrl付き）
@@ -50,7 +54,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // それ以外は通す（/auth/* は常に表示できる）
+  // それ以外は通す
   return NextResponse.next();
 }
 
