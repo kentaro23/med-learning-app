@@ -1,16 +1,23 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { signIn, useSession } from 'next-auth/react';
+
+function useCallbackUrl(sp: ReturnType<typeof useSearchParams>) {
+  return useMemo(() => {
+    const cb = sp.get('callbackUrl');
+    if (cb) return cb;
+    if (typeof window !== 'undefined') return new URL('/dashboard', window.location.origin).toString();
+    return '/dashboard';
+  }, [sp]);
+}
 
 export default function SignupClient() {
   const { status } = useSession();
   const router = useRouter();
   const sp = useSearchParams();
-  const callbackUrl = (typeof window !== 'undefined')
-    ? (sp.get('callbackUrl') || new URL('/dashboard', window.location.origin).toString())
-    : '/dashboard';
+  const callbackUrl = useCallbackUrl(sp);
 
   const [error, setError] = useState<string|null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,13 +31,26 @@ export default function SignupClient() {
     const password = String(f.get('password')||'');
     const name = String(f.get('name')||'');
     const school = String(f.get('school')||'');
+
     const res = await fetch('/api/auth/signup', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ email, password, name, school })
     });
-    setLoading(false);
-    if (!res.ok) { setError('登録に失敗しました。既に登録済みの可能性があります。'); return; }
+    
+    if (res.status === 409) {
+      setLoading(false);
+      router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(email)}`);
+      return;
+    }
+
+    if (!res.ok) {
+      setLoading(false);
+      setError('登録に失敗しました。既に登録済みの可能性があります。');
+      return;
+    }
+
     const sig = await signIn('credentials', { email, password, redirect: false, callbackUrl });
+    setLoading(false);
     if (!sig || (sig as any).error) { setError('自動ログインに失敗しました。ログイン画面からお試しください。'); return; }
     if ((sig as any).url) router.replace((sig as any).url as string);
     else router.replace('/dashboard');
