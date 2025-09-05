@@ -34,52 +34,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'weak_password' }, { status: 400 });
     }
 
-    // 既存確認（フォールバック対応）
-    const exists = await withPrismaFallback((client) => client.user.findUnique({ where: { email: normEmail } }));
-
     const passwordHash = await bcrypt.hash(String(password), 10);
 
-    if (exists) {
-      // 暫定: 既存ユーザーでもパスワードを上書きし、登録成功扱いにする
-      await withPrismaFallback((client) => client.user.update({
-        where: { id: exists.id },
-        data: {
-          passwordHash,
-          name: (String(name || '').trim() || exists.name) ?? null,
-          school: (String(school || '').trim() || exists.school) ?? null,
-        },
-      }));
-      return NextResponse.json({ ok: true, updated: true, reset: true });
-    }
+    // upsert により常に成功させる（既存なら更新、なければ作成）
+    const user = await withPrismaFallback((client) => client.user.upsert({
+      where: { email: normEmail },
+      create: {
+        email: normEmail,
+        passwordHash,
+        name: String(name || '').trim() || null,
+        school: String(school || '').trim() || null,
+      },
+      update: {
+        passwordHash,
+        name: (String(name || '').trim()) || undefined,
+        school: (String(school || '').trim()) || undefined,
+      },
+      select: { id: true, email: true }
+    }));
 
-    // 新規作成（フォールバック対応）
-    try {
-      await withPrismaFallback((client) => client.user.create({
-        data: {
-          email: normEmail,
-          passwordHash,
-          name: String(name || '').trim() || null,
-          school: String(school || '').trim() || null,
-        },
-      }));
-      return NextResponse.json({ ok: true });
-    } catch (e: any) {
-      // 衝突時も上書き（レース対策）
-      if (e?.code === 'P2002') {
-        const found = await withPrismaFallback((client) => client.user.findUnique({ where: { email: normEmail } }));
-        if (found) {
-          await withPrismaFallback((client) => client.user.update({
-            where: { id: found.id },
-            data: { passwordHash, name: String(name || '').trim() || found.name, school: String(school || '').trim() || found.school },
-          }));
-          return NextResponse.json({ ok: true, updated: true, reset: true });
-        }
-      }
-      console.error('signup create error:', e);
-      return NextResponse.json({ error: 'internal' }, { status: 500 });
-    }
+    return NextResponse.json({ ok: true, user });
   } catch (e: any) {
-    console.error('signup error', e?.message || e);
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
+    const code = e?.code || e?.name || 'unknown';
+    const message = e?.message || 'unknown_error';
+    console.error('signup fatal error:', code, message);
+    return NextResponse.json({ error: 'internal', code, message }, { status: 500 });
   }
 }
