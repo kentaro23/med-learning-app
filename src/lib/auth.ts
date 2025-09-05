@@ -137,33 +137,21 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // ログイン成功後のリダイレクト処理
-      console.log('🔄 Redirect callback:', { url, baseUrl });
-      
-      // ログイン成功後のデフォルトリダイレクト
-      if (url === baseUrl || url === `${baseUrl}/`) {
-        return `${baseUrl}/dashboard`;
-      }
-      
-      // サインインページからのリダイレクトは、ログイン成功時のみダッシュボードに
-      // 既に認証済みの場合は、元々アクセスしようとしていたページにリダイレクト
-      if (url.includes('/auth/signin')) {
-        // サインインページからのリダイレクトは、ログイン成功時のみ
-        return `${baseUrl}/dashboard`;
-      }
-      
-      // 相対パスの場合はbaseUrlと結合
+      // 同一オリジンの絶対URLはそのまま許可
+      try {
+        const u = new URL(url);
+        if (u.origin === baseUrl) {
+          return url;
+        }
+      } catch {}
+
+      // 相対パスは baseUrl を付与
       if (url.startsWith('/')) {
         return `${baseUrl}${url}`;
       }
-      
-      // 同じオリジンの場合はそのまま
-      if (new URL(url).origin === baseUrl) {
-        return url;
-      }
-      
-      // デフォルトはダッシュボード
-      return `${baseUrl}/dashboard`;
+
+      // それ以外は baseUrl に戻す
+      return baseUrl;
     }
   },
   events: {
