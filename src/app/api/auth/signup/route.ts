@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
@@ -7,11 +8,8 @@ async function withPrismaFallback<T>(fn: (client: any) => Promise<T>): Promise<T
   try {
     return await fn(prisma);
   } catch (e: any) {
-    const msg = String(e?.message || e);
-    const needFallback = msg.includes('Tenant or user not found') || msg.includes('P1000') || msg.includes('P1013') || msg.includes('P1001') || msg.includes('P1017');
-    if (!needFallback || !process.env.DIRECT_URL) {
-      throw e;
-    }
+    // 一旦すべてのエラーで DIRECT_URL フォールバックを試す（本番安定性優先）
+    if (!process.env.DIRECT_URL) throw e;
     const direct = new DirectPrismaClient({ datasources: { db: { url: process.env.DIRECT_URL } } });
     try {
       return await fn(direct);
