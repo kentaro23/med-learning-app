@@ -2,12 +2,27 @@ import { NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
+import { PrismaClient as DirectPrismaClient } from "@prisma/client";
 
 // 管理者メールアドレスの設定
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
   .split(',')
   .map(e => e.toLowerCase().trim())
   .filter(Boolean);
+
+async function withPrismaFallback<T>(fn: (client: any) => Promise<T>): Promise<T> {
+  try {
+    return await fn(prisma);
+  } catch (e) {
+    if (!process.env.DIRECT_URL) throw e;
+    const direct = new DirectPrismaClient({ datasources: { db: { url: process.env.DIRECT_URL } } });
+    try {
+      return await fn(direct);
+    } finally {
+      await direct.$disconnect().catch(() => {});
+    }
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development',
@@ -58,13 +73,11 @@ export const authOptions: NextAuthOptions = {
           }
           
           if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Checking database for user:', email);
+            console.log('🔍 Checking database for user (with fallback):', email);
           }
           
-          // 通常のユーザー認証（メール大文字小文字を無視して検索）
-          const user = await prisma.user.findFirst({
-            where: { email: { equals: email, mode: 'insensitive' } }
-          });
+          // 通常のユーザー認証（Pooler失敗時は直結にフォールバック）
+          const user = await withPrismaFallback((client) => client.user.findUnique({ where: { email } }));
           
           if (!user) {
             if (process.env.NODE_ENV === 'development') {
@@ -100,12 +113,10 @@ export const authOptions: NextAuthOptions = {
           return { 
             id: user.id, 
             email: user.email, 
-            name: user.name ?? undefined
+            name: user.name
           };
         } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('❌ Authorization error:', error);
-          }
+          console.error('❌ Authorization error (with fallback):', error);
           return null;
         }
       },
@@ -118,18 +129,16 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        // store uid for session mapping
-        (token as any).uid = (user as any).id;
-        token.id = (user as any).id;
-        token.email = (user as any).email;
-        token.name = (user as any).name;
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
         (token as any).isAdmin = (user as any).isAdmin ?? false;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = ((token as any).uid as string) ?? (token.id as string);
+        (session.user as any).id = token.id as string;
         (session.user as any).email = token.email as string;
         (session.user as any).name = token.name as string;
         (session.user as any).isAdmin = Boolean((token as any)?.isAdmin);
